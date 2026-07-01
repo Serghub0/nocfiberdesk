@@ -122,7 +122,7 @@
       <input type="file" id="logoFile" accept="image/*"/>
       <div class="brand" id="brandTitle" title="Click to rename">HOTWIRE <b>NOC · FIBER DESK</b></div>
     </div>
-    <input id="search" placeholder="Search anything — name, GPS, carrier, PM, port, Circuit ID…"/>
+    <input id="search" placeholder="Search anything — separate multiple sites with , ; or *"/>
     <div class="view-toggle">
       <button id="tabMap" class="active">Map</button>
       <button id="tabTable">Table</button>
@@ -645,21 +645,23 @@ function renderFilterChips(){
 /* ---------- LIST / TABLE ---------- */
 function filtered(){
   const qRaw = document.getElementById('search').value.trim().toLowerCase();
-  const q = qRaw.replace(/\s+/g,' ');
+  const terms = qRaw.split(/[,;*]+/).map(t=>t.trim().replace(/\s+/g,' ')).filter(Boolean);
   return records.filter(r=>{
     if(r.deleted) return false;
     if(selectedType!=='all' && r.type!==selectedType) return false;
-    if(!q) return true;
+    if(!terms.length) return true;
     const portConns = (r.ports||[]).map(p=>p.conn||'').join(' ');
     const customVals = Object.values(r.custom||{}).map(v=> (v && typeof v==='object') ? `${v.value||''} ${v.gps||''}` : (v||'')).join(' ');
     const gpsVariants = [`${r.lat}, ${r.lng}`, `${r.lat},${r.lng}`, `${r.lat} ${r.lng}`];
     const hay = [r.label, r.ring, r.city, r.carrier, r.dataCenter, r.p2p, r.pm, r.notes, portConns, customVals,
       r.backbone, r.metro, r.lateral, r.backboneGps, r.metroGps, r.lateralGps, r.serviceType,
       String(r.lat), String(r.lng), ...gpsVariants].join(' ').toLowerCase();
-    const qNoSpace = q.replace(/\s+/g,'');
     const hayNoSpace = hay.replace(/\s+/g,'');
-    const portNumMatch = /^\d+$/.test(q) && r.ports && r.ports[parseInt(q)-1] && r.ports[parseInt(q)-1].on;
-    return hay.includes(q) || hayNoSpace.includes(qNoSpace) || portNumMatch;
+    return terms.some(q=>{
+      const qNoSpace = q.replace(/\s+/g,'');
+      const portNumMatch = /^\d+$/.test(q) && r.ports && r.ports[parseInt(q)-1] && r.ports[parseInt(q)-1].on;
+      return hay.includes(q) || hayNoSpace.includes(qNoSpace) || portNumMatch;
+    });
   });
 }
 
@@ -1063,6 +1065,8 @@ function renderSettingsBody(){
       <p>You'll need to import the latest JSON file again from wherever it's kept — your local computer or the shared file location your team uses. That's expected, not an error.</p>
       <h5>Nothing is ever deleted immediately</h5>
       <p>Deleting a location doesn't erase it — it moves to <b>Recently Deleted</b> and stays there, recoverable, for ${RETENTION_DAYS} days. Every add, edit, delete, restore, port change, and category change is written to the <b>Activity Log</b>, and log entries also stay for ${RETENTION_DAYS} days before aging out automatically. Nothing in either list can be force-removed early.</p>
+      <h5>Searching for a few sites at once</h5>
+      <p>Separate multiple search terms with a comma (,), semicolon (;), or asterisk (*) — for example: <b>SPLICE-168080, ROW CAB 7, TPA Ring1 Seg1 Cab1</b>. The list and map will narrow down to only the sites matching any one of those terms, so you can pull up a handful of specific locations side by side instead of hunting through everything. This works with names, GPS, carriers, ports — anything the regular search already matches.</p>
       <h5>About the export password</h5>
       <p>The password stops someone from generating a convincing-looking export without knowing it. Each export is also signed with a checksum baked into this file's code — when you or the NOC import a file, the badge tells you whether it matches what this tool actually produced. It's a good guard against a hand-edited or mistaken file, not a cryptographic guarantee against someone who has the tool's own source code.</p>
     </div>`;
