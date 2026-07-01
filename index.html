@@ -188,14 +188,14 @@
           </select>
         </div>
       </div>
-      <div class="field"><label id="lblLabel">Label / Site Name</label><input id="fLabel" placeholder="e.g. SPLICE-190001, ROW CAB 12"/></div>
+      <div class="field"><label id="lblLabel">Label / Site Name</label><input id="fLabel" placeholder="e.g. SITE-0001, CAB-01"/></div>
       <div class="row2">
         <div class="field">
           <label id="lblRing">Ring / Segment</label>
           <input id="fRing" list="ringOptions" placeholder="Type or pick existing…" autocomplete="off"/>
           <datalist id="ringOptions"></datalist>
         </div>
-        <div class="field"><label id="lblCity">City / Location</label><input id="fCity" placeholder="e.g. Tampa, FL"/></div>
+        <div class="field"><label id="lblCity">City / Location</label><input id="fCity" placeholder="e.g. City, ST"/></div>
       </div>
       <div class="row3">
         <div class="field">
@@ -218,7 +218,7 @@
         </div>
       </div>
       <div class="row2">
-        <div class="field"><label id="lblCarrier">Carrier Name</label><input id="fCarrier" placeholder="e.g. Zayo, Uniti, FBL"/></div>
+        <div class="field"><label id="lblCarrier">Carrier Name</label><input id="fCarrier" placeholder="e.g. Carrier name"/></div>
         <div class="field">
           <label id="lblDataCenter">Data Center</label>
           <input id="fDataCenter" list="dataCenterOptions" placeholder="Type or pick existing…" autocomplete="off"/>
@@ -226,7 +226,7 @@
         </div>
       </div>
       <div class="row2">
-        <div class="field"><label id="lblP2P">Point to Point</label><input id="fP2P" placeholder="e.g. TPA → MCO 42.09km"/></div>
+        <div class="field"><label id="lblP2P">Point to Point</label><input id="fP2P" placeholder="e.g. Site A → Site B, 10km"/></div>
         <div class="field"><label id="lblPM">Hotwire Area PM</label><input id="fPM" placeholder="PM name"/></div>
       </div>
       <div class="row2">
@@ -268,7 +268,7 @@
         <label>Status</label>
         <select id="pStatus"><option value="off">Off / Available</option><option value="on">On / Assigned</option></select>
       </div>
-      <div class="field"><label>Connects To</label><input id="pConn" placeholder="e.g. ROW CAB 7 · AGG1"/></div>
+      <div class="field"><label>Connects To</label><input id="pConn" placeholder="e.g. Cabinet 3 · Port 5"/></div>
       <div class="field"><label>Distance</label><input id="pDist" placeholder="e.g. 18.4 km"/></div>
     </div>
     <div class="mfoot">
@@ -325,7 +325,7 @@
       </div>
       <div class="field">
         <label>Notes for this export (optional)</label>
-        <textarea id="exportNote" placeholder="e.g. Weekly NOC sync, added 3 new splice closures in Pompano"></textarea>
+        <textarea id="exportNote" placeholder="e.g. Weekly NOC sync, added 3 new sites"></textarea>
       </div>
       <div style="font-size:11px; color:var(--muted); line-height:1.5;">File name and export time are stamped automatically. Your browser may offer to save this password for next time.</div>
     </form>
@@ -497,26 +497,9 @@ function purgeExpired(){
 }
 
 function seedRecords(){
-  const seeds = [
-    {id:'r1', type:'splice', label:'SPLICE-168080', ring:'Ring 1 — ROW CAB 7', city:'Pompano Beach, FL', carrier:'Zayo', dataCenter:'', p2p:'', pm:'', lat:26.2712, lng:-80.1435, fiberCount:24,
-     ports:Array.from({length:24},(_,i)=>({on:[0,1,4,5].includes(i), conn: i===0? 'ROW CAB 7 · AGG1' : (i===1?'ROW CAB 7 · AGG1':''), dist:''})),
-     notes:'Optical splice closure on Ring 1 backbone near NE 14th St Causeway.'},
-    {id:'r2', type:'row', label:'ROW CAB 7', ring:'Ring 1', city:'Pompano Beach, FL', carrier:'Uniti', dataCenter:'', p2p:'', pm:'', lat:26.2789, lng:-80.1226, fiberCount:24,
-     ports:Array.from({length:24},(_,i)=>({on:[0,1,2,3,6,7].includes(i), conn: i===0?'SPLICE-168080':(i===2?'SPLICE-181936':''), dist:''})),
-     notes:'Right-of-way cabinet, north segment of Ring 1.'},
-    {id:'r3', type:'util', label:'ZYO FL-17849', ring:'Ring 1', city:'Pompano Beach, FL', carrier:'Zayo', dataCenter:'', p2p:'', pm:'', lat:26.2611, lng:-80.1339, fiberCount:12,
-     ports:Array.from({length:12},(_,i)=>({on:[0,1].includes(i), conn:i===0?'SPLICE-181936':'', dist:''})),
-     notes:'Underground utility box, ZYO conduit access.'},
-    {id:'r4', type:'cab', label:'TPA Ring1 Seg1 Cab1', ring:'TPA Ring 1 · Seg 1', city:'Tampa, FL', carrier:'FBL', dataCenter:'HW Tampa 365', p2p:'TPA→MCO', pm:'', lat:27.9506, lng:-82.4572, fiberCount:24,
-     ports:Array.from({length:24},(_,i)=>({on:[0,1,2,3,6,7,8,9,10,11].includes(i), conn:i===0?'HW Tampa 365':(i===6?'TPA Ring1 Cab2':''), dist:i===0?'3.7 km':(i===6?'18.4 km':'')})),
-     notes:'Permanent power OK. Root cabinet feeding HW Tampa 365 data center.'},
-    {id:'r6', type:'cab', label:'CTRL FL Ring1 Cab3', ring:'CTRL FL Ring 1', city:'Orlando, FL', carrier:'Zayo', dataCenter:'Coresite', p2p:'', pm:'', lat:28.3852, lng:-81.4014, fiberCount:24,
-     ports:Array.from({length:24},(_,i)=>({on:[0,1,2,3,4,5,6,7].includes(i), conn:i===0?'RING 1 CAB 2 BB':(i===4?'RING 1 CAB 4 METRO':''), dist:i===0?'41.4 km':(i===4?'71.65 km':'')})),
-     notes:'Coresite BB / Coresite Metro pair. Confirm cross-connect to corsite metro.'},
-  ];
-  const now = Date.now();
-  seeds.forEach(s=>{ s.updatedAt = now; s.custom = s.custom || {}; });
-  return seeds;
+  // No sample data — this version starts empty. Import your JSON export
+  // (Settings → Data → Import JSON) to load your actual site data.
+  return [];
 }
 
 function applyFieldLabels(){
@@ -1251,8 +1234,8 @@ document.getElementById('search').addEventListener('input', renderList);
 function downloadCsvTemplate(){
   const headers = ['type','label','ring','city','carrier','data_center','point_to_point','area_pm','lat','lng','fiber_count','active_ports','notes',
     'backbone','backbone_gps','metro','metro_gps','lateral','lateral_gps','service_type'];
-  const example = ['cab','TPA Ring1 Seg5 Cab5','TPA Ring 1 · Seg 5','Tampa, FL','Zayo','HW Tampa 365','TPA->MCO 42.09km','J. Sanchez','27.9600','-82.4600','24','1|2|7|8','Example row - delete before mass upload',
-    'TPA Backbone A','27.9500,-82.4600','TPA Metro 1','27.9520,-82.4550','TPA Lateral 3','27.9600,-82.4500','Lit'];
+  const example = ['cab','EXAMPLE-CAB-01','Example Ring · Seg 1','City, ST','Carrier Name','Data Center Name','Site A -> Site B 10km','PM Name','0.0000','0.0000','24','1|2|7|8','Example row - delete before mass upload',
+    'Example Backbone','0.0000,0.0000','Example Metro','0.0000,0.0000','Example Lateral','0.0000,0.0000','Lit'];
   const csv = headers.join(',') + '\n' + example.join(',') + '\n';
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
