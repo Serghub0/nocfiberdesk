@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hotwire NOC | Fiber Network Desk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#12161f; --panel2:#171c28; --line:#232937;
+    --text:#e7ecf5; --muted:#7d8aa0; --mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+    --sans:'Inter',-apple-system,Segoe UI,sans-serif;
+    --row-accent:#3f9ee5; --occupied:#2fbf7a; --empty:#232937; --danger:#e5544f; --warn:#e0a92f;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:var(--sans); height:100vh; overflow:hidden;}
+  #app{display:grid; grid-template-columns:340px 1fr; grid-template-rows:56px 1fr; height:100vh;}
+
+  .brandWrap{display:flex; align-items:center; gap:8px;}
+  #logoBox{width:52px; height:34px; border:1px dashed var(--line); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--muted); font-family:var(--mono); cursor:pointer; flex-shrink:0; overflow:hidden; background:var(--panel2);}
+  #logoBox img{width:100%; height:100%; object-fit:contain;}
+  #logoBox:hover{border-color:var(--row-accent);}
+  #brandTitle{cursor:text; padding:2px 4px; border-radius:4px;}
+  #brandTitle:hover{background:var(--panel2);}
+  #sidebarFooter{padding:10px 14px; border-top:1px solid var(--line); font-size:10px; color:var(--muted); font-family:var(--mono); text-align:center;}
+
+  #topbar{grid-column:1/3; display:flex; align-items:center; gap:8px; padding:0 14px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:nowrap;}
+  #topbar .brand{font-family:var(--mono); font-weight:600; font-size:12.5px; color:var(--muted); letter-spacing:.5px; white-space:nowrap;}
+  #topbar .brand b{color:var(--text);}
+  #search{flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); padding:8px 12px; font-size:13px; font-family:var(--sans);}
+  #search:focus{outline:none; border-color:var(--row-accent);}
+  .btn{background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:7px 11px; border-radius:6px; font-size:11.5px; cursor:pointer; font-family:var(--sans); white-space:nowrap;}
+  .btn:hover{border-color:var(--row-accent);}
+  .btn.primary{background:var(--row-accent); border-color:var(--row-accent); color:#06121e; font-weight:600;}
+  .btn.danger{background:transparent; border-color:var(--danger); color:var(--danger);}
+  .btn.danger:hover{background:rgba(229,84,79,.1);}
+  .btn:disabled{opacity:.35; cursor:not-allowed;}
+  input[type=file]{display:none;}
+  .view-toggle{display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .view-toggle button{background:transparent; border:none; color:var(--muted); padding:7px 12px; font-size:11.5px; cursor:pointer; font-family:var(--sans); font-weight:600;}
+  .view-toggle button.active{background:var(--row-accent); color:#06121e;}
+
+  #sidebar{background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; display:flex; flex-direction:column;}
+  .filters{padding:12px 14px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
+  .chip{font-size:11px; padding:5px 10px; border-radius:20px; border:1px solid var(--line); cursor:pointer; color:var(--muted); font-family:var(--mono);}
+  .chip.active{color:#06121e; border-color:transparent; font-weight:600;}
+  .manageCatBtn{font-size:10px; color:var(--muted); background:none; border:1px dashed var(--line); border-radius:20px; padding:5px 10px; cursor:pointer; font-family:var(--sans);}
+  .count-line{padding:8px 14px; font-size:11px; color:var(--muted); font-family:var(--mono); border-bottom:1px solid var(--line);}
+  #list{flex:1; overflow-y:auto;}
+  .item{padding:10px 14px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; gap:10px; align-items:flex-start;}
+  .item:hover{background:var(--panel2);}
+  .item.selected{background:#1b2740; border-left:3px solid var(--row-accent); padding-left:11px;}
+  .dot{width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0;}
+  .item-main .label{font-family:var(--mono); font-size:12.5px; font-weight:600;}
+  .item-main .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+
+  #main{position:relative; overflow:hidden;}
+  #map{width:100%; height:100%;}
+  #tableWrap{width:100%; height:100%; overflow:auto; display:none;}
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  thead th{position:sticky; top:0; background:var(--panel); text-align:left; padding:9px 10px; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--line); font-family:var(--mono);}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--line); font-family:var(--mono); white-space:nowrap;}
+  tbody tr:hover{background:var(--panel2); cursor:pointer;}
+  .type-pill{font-size:10px; padding:2px 8px; border-radius:10px; font-family:var(--sans); font-weight:600;}
+
+  #drawer{position:absolute; top:0; right:0; width:420px; height:100%; background:var(--panel); border-left:1px solid var(--line); transform:translateX(100%); transition:transform .2s ease; overflow-y:auto; z-index:500;}
+  #drawer.open{transform:translateX(0);}
+  #drawer .dhead{padding:16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  #drawer .dhead .label{font-family:var(--mono); font-size:15px; font-weight:600;}
+  #drawer .dhead .sub{font-size:12px; color:var(--muted); margin-top:4px;}
+  #drawer .headBtns{display:flex; gap:6px; flex-shrink:0;}
+  .closeBtn{background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer;}
+  #drawer .section{padding:14px 16px; border-bottom:1px solid var(--line);}
+  #drawer .section h4{font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:10px;}
+  .kv{display:grid; grid-template-columns:110px 1fr; gap:6px 10px; font-size:12.5px; margin-bottom:6px;}
+  .kv .k{color:var(--muted); font-family:var(--mono); font-size:11px; padding-top:2px;}
+  .kv input, .kv select, .kv textarea{background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:6px 8px; border-radius:5px; font-size:12.5px; font-family:var(--sans); width:100%;}
+  .coord{font-family:var(--mono); font-size:12.5px; background:var(--panel2); padding:8px 10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;}
+  .coord button{background:none; border:1px solid var(--line); color:var(--muted); font-size:10px; padding:3px 7px; border-radius:4px; cursor:pointer;}
+  .cassette-label{font-size:10px; color:var(--muted); font-family:var(--mono); margin:8px 0 4px;}
+  .portgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px;}
+  .port{background:var(--empty); border-radius:5px; padding:6px 4px; text-align:center; font-family:var(--mono); font-size:10.5px; position:relative;}
+  .port.on{background:rgba(47,191,122,.18); color:var(--occupied); border:1px solid rgba(47,191,122,.4);}
+  .port.editable{cursor:pointer;}
+  .port.editable:hover{outline:1px solid var(--row-accent);}
+  .port .n{font-size:9px; color:var(--muted); display:block;}
+  .port.on .n{color:var(--occupied);}
+  .notes{font-size:12px; line-height:1.5; color:var(--muted);}
+  .conn-list{font-size:11.5px; color:var(--muted); line-height:1.6;}
+  .conn-list b{color:var(--text); font-family:var(--mono);}
+
+  /* Modal */
+  .modalOverlay{position:fixed; inset:0; background:rgba(3,5,10,.7); display:none; align-items:center; justify-content:center; z-index:1000;}
+  .modalOverlay.open{display:flex;}
+  .modal{background:var(--panel); border:1px solid var(--line); border-radius:10px; width:560px; max-width:92vw; max-height:88vh; overflow-y:auto;}
+  .modal .mhead{padding:16px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;}
+  .modal .mhead h3{font-size:14px; font-family:var(--mono);}
+  .modal .mbody{padding:18px 20px; display:flex; flex-direction:column; gap:12px;}
+  .field label{font-size:11px; color:var(--muted); font-family:var(--mono); display:block; margin-bottom:5px;}
+  .field input, .field select, .field textarea{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:9px 10px; border-radius:6px; font-size:13px; font-family:var(--sans);}
+  .field textarea{resize:vertical; min-height:50px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+  .modal .mfoot{padding:14px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px;}
+  .catRow{display:flex; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);}
+  .catRow input[type=color]{width:34px; height:30px; border:none; background:none; padding:0; cursor:pointer;}
+  .catRow input[type=text]{flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:6px 8px; border-radius:5px; font-size:12.5px;}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div class="brandWrap">
+      <div id="logoBox" title="Click to add logo">LOGO</div>
+      <input type="file" id="logoFile" accept="image/*"/>
+      <div class="brand" id="brandTitle" title="Click to rename">HOTWIRE <b>NOC · FIBER DESK</b></div>
+    </div>
+    <input id="search" placeholder="Search anything — name, GPS, carrier, PM, port, Circuit ID…"/>
+    <div class="view-toggle">
+      <button id="tabMap" class="active">Map</button>
+      <button id="tabTable">Table</button>
+    </div>
+    <button class="btn" id="settingsBtn">⚙ Settings</button>
+    <button class="btn primary" id="btnAdd">+ Add Location</button>
+  </div>
+
+  <div id="sidebar">
+    <div class="filters" id="filterChips"></div>
+    <div class="count-line" id="countLine">— records</div>
+    <div id="list"></div>
+    <div id="sidebarFooter">© <span id="copyYear"></span> Serginio Picard</div>
+  </div>
+
+  <div id="main">
+    <div id="map"></div>
+    <div id="tableWrap">
+      <table>
+        <thead><tr><th>Type</th><th>Label</th><th>Ring/Seg</th><th>City</th><th>Carrier</th><th>Data Center</th><th>P2P</th><th>Area PM</th><th>Ports</th><th>GPS</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="drawer">
+      <div class="dhead">
+        <div>
+          <div class="label" id="dLabel">—</div>
+          <div class="sub" id="dSub">—</div>
+        </div>
+        <div class="headBtns">
+          <button class="btn" id="dEditBtn">Edit</button>
+          <button class="btn danger" id="dDeleteBtn">Delete</button>
+          <button class="closeBtn" onclick="closeDrawer()">✕</button>
+        </div>
+      </div>
+      <div class="section" id="dInfoSection"></div>
+      <div class="section">
+        <h4 id="dPortsHeader">Ports</h4>
+        <div id="dPorts"></div>
+      </div>
+      <div class="section">
+        <h4>Notes</h4>
+        <div class="notes" id="dNotes">—</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add/Edit Location Modal -->
+<div class="modalOverlay" id="locModal">
+  <div class="modal">
+    <div class="mhead"><h3 id="locModalTitle">Add Location</h3><button class="closeBtn" onclick="closeLocModal()">✕</button></div>
+    <div class="mbody">
+      <div class="row2">
+        <div class="field"><label id="lblCategory">Category</label><select id="fType"></select></div>
+        <div class="field"><label id="lblFiberCount">Fiber Count</label>
+          <select id="fFiberCount">
+            <option>12</option><option selected>24</option><option>36</option><option>48</option>
+            <option>60</option><option>72</option><option>84</option><option>96</option>
+            <option>108</option><option>120</option><option>144</option><option>168</option>
+            <option>192</option><option>216</option><option>240</option><option>264</option><option>288</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label id="lblLabel">Label / Site Name</label><input id="fLabel" placeholder="e.g. SPLICE-190001, ROW CAB 12"/></div>
+      <div class="row2">
+        <div class="field">
+          <label id="lblRing">Ring / Segment</label>
+          <input id="fRing" list="ringOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+          <datalist id="ringOptions"></datalist>
+        </div>
+        <div class="field"><label id="lblCity">City / Location</label><input id="fCity" placeholder="e.g. Tampa, FL"/></div>
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label id="lblBackbone">Backbone</label>
+          <input id="fBackbone" list="backboneOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+          <datalist id="backboneOptions"></datalist>
+          <input id="fBackboneGps" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
+        </div>
+        <div class="field">
+          <label id="lblMetro">Metro</label>
+          <input id="fMetro" list="metroOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+          <datalist id="metroOptions"></datalist>
+          <input id="fMetroGps" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
+        </div>
+        <div class="field">
+          <label id="lblLateral">Lateral</label>
+          <input id="fLateral" list="lateralOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+          <datalist id="lateralOptions"></datalist>
+          <input id="fLateralGps" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lblCarrier">Carrier Name</label><input id="fCarrier" placeholder="e.g. Zayo, Uniti, FBL"/></div>
+        <div class="field">
+          <label id="lblDataCenter">Data Center</label>
+          <input id="fDataCenter" list="dataCenterOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+          <datalist id="dataCenterOptions"></datalist>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lblP2P">Point to Point</label><input id="fP2P" placeholder="e.g. TPA → MCO 42.09km"/></div>
+        <div class="field"><label id="lblPM">Hotwire Area PM</label><input id="fPM" placeholder="PM name"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lblLat">Latitude</label><input id="fLat" placeholder="27.9506"/></div>
+        <div class="field"><label id="lblLng">Longitude</label><input id="fLng" placeholder="-82.4572"/></div>
+      </div>
+      <div class="field"><label id="lblServiceType">Service Type</label><input id="fServiceType" placeholder="e.g. Lit, Dark, Wave"/></div>
+      <div class="field"><label id="lblNotes">Notes</label><textarea id="fNotes" placeholder="Anything the NOC should know…"></textarea></div>
+      <div id="customFieldsAdd"></div>
+      <button class="manageCatBtn" type="button" id="manageFieldsBtn" style="align-self:flex-start;">+ Manage Extra Fields</button>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="closeLocModal()">Cancel</button>
+      <button class="btn primary" id="fSaveBtn">Save Location</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Categories Modal -->
+<div class="modalOverlay" id="catModal">
+  <div class="modal">
+    <div class="mhead"><h3>Manage Categories</h3><button class="closeBtn" onclick="closeCatModal()">✕</button></div>
+    <div class="mbody">
+      <div id="catList"></div>
+      <button class="btn" id="addCatBtn" style="align-self:flex-start;">+ Add Category</button>
+    </div>
+    <div class="mfoot">
+      <button class="btn primary" onclick="closeCatModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Edit Modal -->
+<div class="modalOverlay" id="portModal">
+  <div class="modal" style="width:400px;">
+    <div class="mhead"><h3 id="portModalTitle">Port</h3><button class="closeBtn" onclick="closePortModal()">✕</button></div>
+    <div class="mbody">
+      <div class="field">
+        <label>Status</label>
+        <select id="pStatus"><option value="off">Off / Available</option><option value="on">On / Assigned</option></select>
+      </div>
+      <div class="field"><label>Connects To</label><input id="pConn" placeholder="e.g. ROW CAB 7 · AGG1"/></div>
+      <div class="field"><label>Distance</label><input id="pDist" placeholder="e.g. 18.4 km"/></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="closePortModal()">Cancel</button>
+      <button class="btn primary" id="pSaveBtn">Save Port</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Extra Fields Modal -->
+<div class="modalOverlay" id="fieldsModal">
+  <div class="modal">
+    <div class="mhead"><h3>Manage Extra Fields</h3><button class="closeBtn" onclick="closeFieldsModal()">✕</button></div>
+    <div class="mbody">
+      <div class="howHtml"><p>Add any additional field you need on every location — it'll appear on the Add Location form and in each location's details.</p></div>
+      <div id="fieldsList"></div>
+      <button class="btn" id="addFieldBtn" style="align-self:flex-start;">+ Add Field</button>
+    </div>
+    <div class="mfoot"><button class="btn primary" onclick="closeFieldsModal()">Done</button></div>
+  </div>
+</div>
+
+<!-- Duplicate / Conflict Review Modal -->
+<div class="modalOverlay" id="conflictModal">
+  <div class="modal" style="width:760px;">
+    <div class="mhead"><h3 id="conflictTitle">Review Duplicates</h3><button class="closeBtn" onclick="cancelConflictReview()">✕</button></div>
+    <div class="mbody">
+      <div class="howHtml"><p id="conflictSummary"></p></div>
+      <div class="dataTabBtns">
+        <button class="btn" id="bulkKeepMineBtn">Keep Mine — All</button>
+        <button class="btn" id="bulkKeepIncomingBtn">Keep Incoming — All</button>
+      </div>
+      <div id="conflictList" style="max-height:44vh; overflow-y:auto;"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="cancelConflictReview()">Cancel Import</button>
+      <button class="btn primary" id="applyConflictBtn">Apply & Finish Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Password Modal -->
+<div class="modalOverlay" id="exportModal">
+  <div class="modal" style="width:440px;">
+    <div class="mhead"><h3>Export JSON</h3><button class="closeBtn" onclick="closeExportModal()">✕</button></div>
+    <form class="mbody" onsubmit="return false;" autocomplete="on">
+      <div class="field">
+        <label>Export Password</label>
+        <div style="position:relative;">
+          <input type="password" id="exportPw" name="fiber-desk-export-password" autocomplete="current-password" placeholder="Password" style="padding-right:38px;"/>
+          <button type="button" id="pwEyeBtn" style="position:absolute; right:6px; top:6px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px;">👁</button>
+        </div>
+        <input type="text" name="username" autocomplete="username" value="hotwire-noc-export" style="position:absolute; opacity:0; height:0; width:0; pointer-events:none;" tabindex="-1"/>
+      </div>
+      <div class="field">
+        <label>Notes for this export (optional)</label>
+        <textarea id="exportNote" placeholder="e.g. Weekly NOC sync, added 3 new splice closures in Pompano"></textarea>
+      </div>
+      <div style="font-size:11px; color:var(--muted); line-height:1.5;">File name and export time are stamped automatically. Your browser may offer to save this password for next time.</div>
+    </form>
+    <div class="mfoot">
+      <button class="btn" onclick="closeExportModal()">Cancel</button>
+      <button class="btn primary" id="exportConfirmBtn">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modalOverlay" id="settingsModal">
+  <div class="modal" style="width:640px;">
+    <div class="mhead"><h3>Settings</h3><button class="closeBtn" onclick="closeSettingsModal()">✕</button></div>
+    <div style="display:flex; border-bottom:1px solid var(--line); padding:0 20px; flex-wrap:wrap;">
+      <div class="settingsTab active" data-tab="how">How This Works</div>
+      <div class="settingsTab" data-tab="data">Data</div>
+      <div class="settingsTab" data-tab="labels">Field Labels</div>
+      <div class="settingsTab" data-tab="lists">Dropdown Lists</div>
+      <div class="settingsTab" data-tab="log">Activity Log</div>
+      <div class="settingsTab" data-tab="deleted">Recently Deleted</div>
+    </div>
+    <div class="mbody" id="settingsBody" style="max-height:60vh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<style>
+.settingsTab{padding:12px 14px; font-size:12px; font-family:var(--mono); color:var(--muted); cursor:pointer; border-bottom:2px solid transparent;}
+.settingsTab.active{color:var(--text); border-bottom-color:var(--row-accent);}
+.logEntry{display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:12px;}
+.logEntry .badge{font-size:9.5px; font-family:var(--mono); font-weight:600; padding:2px 7px; border-radius:4px; height:fit-content; white-space:nowrap;}
+.logEntry .badge.add{background:rgba(47,191,122,.15); color:var(--occupied);}
+.logEntry .badge.edit{background:rgba(63,158,229,.15); color:var(--row-accent);}
+.logEntry .badge.delete{background:rgba(229,84,79,.15); color:var(--danger);}
+.logEntry .badge.restore{background:rgba(224,169,47,.15); color:var(--warn);}
+.logEntry .badge.port{background:rgba(139,107,224,.15); color:#8b6be0;}
+.logEntry .badge.cat{background:rgba(224,169,47,.15); color:var(--warn);}
+.logEntry .badge.field{background:rgba(224,169,47,.15); color:#e08f2f;}
+.logEntry .meta{flex:1;}
+.logEntry .ts{color:var(--muted); font-family:var(--mono); font-size:10.5px; white-space:nowrap;}
+.delRow{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
+.delRow .days{font-size:10.5px; color:var(--muted); font-family:var(--mono);}
+.howHtml p{margin-bottom:10px; font-size:13px; line-height:1.6; color:var(--text);}
+.howHtml h5{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:16px 0 6px; font-family:var(--mono);}
+.howHtml h5:first-child{margin-top:0;}
+.labelRow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line);}
+.labelRow span{color:var(--muted); font-family:var(--mono); font-size:11.5px; width:130px; flex-shrink:0;}
+.labelRow input{flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:6px 8px; border-radius:5px; font-size:12.5px;}
+.dataTabBtns{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.verifyBadge{font-size:11px; padding:4px 10px; border-radius:5px; font-family:var(--mono); display:inline-block; margin-top:8px;}
+.verifyBadge.ok{background:rgba(47,191,122,.15); color:var(--occupied);}
+.verifyBadge.bad{background:rgba(229,84,79,.15); color:var(--danger);}
+.conflictRow{border-bottom:1px solid var(--line); padding:12px 0;}
+.conflictRow .cHead{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.conflictRow .cLabel{font-family:var(--mono); font-weight:600; font-size:13px;}
+.conflictRow .cDiff{font-size:11px; color:var(--warn); margin-top:2px;}
+.conflictRow .cDiff.none{color:var(--muted);}
+.conflictRow .cChoices{display:flex; gap:14px;}
+.conflictRow .cSide{flex:1; background:var(--panel2); border-radius:6px; padding:8px 10px; font-size:11.5px; cursor:pointer; border:2px solid transparent;}
+.conflictRow .cSide.selected{border-color:var(--row-accent);}
+.conflictRow .cSide .cSideHead{display:flex; justify-content:space-between; color:var(--muted); font-family:var(--mono); font-size:10px; margin-bottom:4px;}
+.conflictRow .cSide .cSideBody{color:var(--text); line-height:1.5;}
+</style>
+
+<script>
+/* ---------- STATE ---------- */
+let records = [];
+let activityLog = [];
+const RETENTION_DAYS = 365;
+let categories = [
+  {key:'splice', label:'Splice Closure', color:'#e0a92f'},
+  {key:'row', label:'ROW Cabinet', color:'#3f9ee5'},
+  {key:'util', label:'Underground Utility Box', color:'#8b6be0'},
+  {key:'cab', label:'Cabinet / Rack', color:'#2fbf7a'}
+];
+let selectedType = 'all';
+let selectedId = null;
+let editingRecordId = null; // record currently being edited inline in drawer
+let activePortEdit = null;  // {recordId, portIndex}
+const EXPORT_PASSWORD = 'HWC-GSD1';
+const EXPORT_SALT = 'hwc-gsd1-fiber-desk-2026';
+
+let fieldLabels = {
+  category:'Category', fiberCount:'Fiber Count', label:'Label / Site Name', ring:'Ring / Segment',
+  city:'City / Location', carrier:'Carrier Name', dataCenter:'Data Center', p2p:'Point to Point',
+  pm:'Hotwire Area PM', lat:'Latitude', lng:'Longitude', notes:'Notes',
+  backbone:'Backbone', metro:'Metro', lateral:'Lateral', serviceType:'Service Type'
+};
+let fieldOptions = {ring:[], dataCenter:[], backbone:[], metro:[], lateral:[]};
+let customFields = []; // [{key, label, type:'text'|'textarea'}]
+
+/* ---------- PERSISTENCE ----------
+   Uses the browser's own local storage so this works as a standalone file
+   hosted anywhere (or just opened directly) — not tied to any particular link.
+   Note: browser storage is intentionally disabled inside Claude's in-chat
+   preview frame, so autosave will only be visible once this file is opened
+   directly in a real browser tab (downloaded, or hosted). */
+function lsGet(key, fallback){
+  try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function lsSet(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
+  catch(e){ console.error('save failed', e); return false; }
+}
+
+async function loadData(){
+  records = lsGet('fiber-records', null) || seedRecords();
+  categories = lsGet('fiber-categories', null) || categories;
+  activityLog = lsGet('fiber-activity-log', []);
+  fieldLabels = lsGet('fiber-field-labels', null) || fieldLabels;
+  customFields = lsGet('fiber-custom-fields', []);
+  fieldOptions = lsGet('fiber-field-options', null) || fieldOptions;
+  const title = lsGet('fiber-brand-title', null);
+  if(title) document.getElementById('brandTitle').innerHTML = title;
+  const DEFAULT_LOGO = 'data:image/png;base64,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';
+  const logo = lsGet('fiber-logo', null) || DEFAULT_LOGO;
+  document.getElementById('logoBox').innerHTML = `<img src="${logo}"/>`;
+
+  purgeExpired();
+  applyFieldLabels();
+  refreshDatalists();
+  renderFilterChips();
+  renderList();
+}
+async function saveRecords(){ lsSet('fiber-records', records); }
+async function saveCategories(){ lsSet('fiber-categories', categories); }
+async function saveLog(){ lsSet('fiber-activity-log', activityLog); }
+function saveFieldLabels(){ lsSet('fiber-field-labels', fieldLabels); }
+function saveCustomFields(){ lsSet('fiber-custom-fields', customFields); }
+function saveFieldOptions(){ lsSet('fiber-field-options', fieldOptions); }
+
+/* Adds a value to a dropdown's remembered list if it's new — this is how
+   Ring/Segment, Data Center, Backbone, Metro, and Lateral "learn" new
+   entries as people type them, instead of needing to be pre-populated. */
+function registerOptionValue(key, value){
+  if(!value) return;
+  const v = value.trim();
+  if(!v) return;
+  if(!fieldOptions[key]) fieldOptions[key] = [];
+  if(!fieldOptions[key].some(x=>x.toLowerCase()===v.toLowerCase())){
+    fieldOptions[key].push(v);
+    saveFieldOptions();
+  }
+}
+function refreshDatalists(){
+  const map = {ringOptions:'ring', dataCenterOptions:'dataCenter', backboneOptions:'backbone', metroOptions:'metro', lateralOptions:'lateral'};
+  Object.keys(map).forEach(elId=>{
+    const el = document.getElementById(elId);
+    if(el) el.innerHTML = (fieldOptions[map[elId]]||[]).map(v=>`<option value="${escAttr(v)}"></option>`).join('');
+  });
+}
+
+function logEvent(action, label, details){
+  activityLog.unshift({ts:Date.now(), action, label, details: details||''});
+  saveLog();
+}
+
+/* Soft-deleted records and log entries older than RETENTION_DAYS are purged permanently.
+   Nothing before that window can be removed early — this runs automatically on load. */
+function purgeExpired(){
+  const cutoff = Date.now() - RETENTION_DAYS*24*60*60*1000;
+  const beforeCount = records.length;
+  records = records.filter(r => !(r.deleted && r.deletedAt < cutoff));
+  const beforeLog = activityLog.length;
+  activityLog = activityLog.filter(e => e.ts >= cutoff);
+  if(records.length !== beforeCount) saveRecords();
+  if(activityLog.length !== beforeLog) saveLog();
+}
+
+function seedRecords(){
+  const seeds = [
+    {id:'r1', type:'splice', label:'SPLICE-168080', ring:'Ring 1 — ROW CAB 7', city:'Pompano Beach, FL', carrier:'Zayo', dataCenter:'', p2p:'', pm:'', lat:26.2712, lng:-80.1435, fiberCount:24,
+     ports:Array.from({length:24},(_,i)=>({on:[0,1,4,5].includes(i), conn: i===0? 'ROW CAB 7 · AGG1' : (i===1?'ROW CAB 7 · AGG1':''), dist:''})),
+     notes:'Optical splice closure on Ring 1 backbone near NE 14th St Causeway.'},
+    {id:'r2', type:'row', label:'ROW CAB 7', ring:'Ring 1', city:'Pompano Beach, FL', carrier:'Uniti', dataCenter:'', p2p:'', pm:'', lat:26.2789, lng:-80.1226, fiberCount:24,
+     ports:Array.from({length:24},(_,i)=>({on:[0,1,2,3,6,7].includes(i), conn: i===0?'SPLICE-168080':(i===2?'SPLICE-181936':''), dist:''})),
+     notes:'Right-of-way cabinet, north segment of Ring 1.'},
+    {id:'r3', type:'util', label:'ZYO FL-17849', ring:'Ring 1', city:'Pompano Beach, FL', carrier:'Zayo', dataCenter:'', p2p:'', pm:'', lat:26.2611, lng:-80.1339, fiberCount:12,
+     ports:Array.from({length:12},(_,i)=>({on:[0,1].includes(i), conn:i===0?'SPLICE-181936':'', dist:''})),
+     notes:'Underground utility box, ZYO conduit access.'},
+    {id:'r4', type:'cab', label:'TPA Ring1 Seg1 Cab1', ring:'TPA Ring 1 · Seg 1', city:'Tampa, FL', carrier:'FBL', dataCenter:'HW Tampa 365', p2p:'TPA→MCO', pm:'', lat:27.9506, lng:-82.4572, fiberCount:24,
+     ports:Array.from({length:24},(_,i)=>({on:[0,1,2,3,6,7,8,9,10,11].includes(i), conn:i===0?'HW Tampa 365':(i===6?'TPA Ring1 Cab2':''), dist:i===0?'3.7 km':(i===6?'18.4 km':'')})),
+     notes:'Permanent power OK. Root cabinet feeding HW Tampa 365 data center.'},
+    {id:'r6', type:'cab', label:'CTRL FL Ring1 Cab3', ring:'CTRL FL Ring 1', city:'Orlando, FL', carrier:'Zayo', dataCenter:'Coresite', p2p:'', pm:'', lat:28.3852, lng:-81.4014, fiberCount:24,
+     ports:Array.from({length:24},(_,i)=>({on:[0,1,2,3,4,5,6,7].includes(i), conn:i===0?'RING 1 CAB 2 BB':(i===4?'RING 1 CAB 4 METRO':''), dist:i===0?'41.4 km':(i===4?'71.65 km':'')})),
+     notes:'Coresite BB / Coresite Metro pair. Confirm cross-connect to corsite metro.'},
+  ];
+  const now = Date.now();
+  seeds.forEach(s=>{ s.updatedAt = now; s.custom = s.custom || {}; });
+  return seeds;
+}
+
+function applyFieldLabels(){
+  const map = {lblCategory:'category', lblFiberCount:'fiberCount', lblLabel:'label', lblRing:'ring',
+    lblCity:'city', lblCarrier:'carrier', lblDataCenter:'dataCenter', lblP2P:'p2p', lblPM:'pm',
+    lblLat:'lat', lblLng:'lng', lblNotes:'notes', lblBackbone:'backbone', lblMetro:'metro',
+    lblLateral:'lateral', lblServiceType:'serviceType'};
+  Object.keys(map).forEach(elId=>{
+    const el = document.getElementById(elId);
+    if(el) el.textContent = fieldLabels[map[elId]];
+  });
+}
+
+/* ---------- BRAND TITLE + LOGO ---------- */
+document.getElementById('brandTitle').addEventListener('click', function(){
+  const current = this.textContent.trim();
+  const next = prompt('Rename this dashboard title:', current);
+  if(next !== null && next.trim()){
+    this.innerHTML = next.trim();
+    lsSet('fiber-brand-title', next.trim());
+  }
+});
+document.getElementById('logoBox').addEventListener('click', ()=>document.getElementById('logoFile').click());
+document.getElementById('logoFile').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    document.getElementById('logoBox').innerHTML = `<img src="${ev.target.result}"/>`;
+    lsSet('fiber-logo', ev.target.result);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+/* ---------- MANAGE EXTRA (CUSTOM) FIELDS ---------- */
+function openFieldsModal(){ renderFieldsList(); document.getElementById('fieldsModal').classList.add('open'); }
+function closeFieldsModal(){ document.getElementById('fieldsModal').classList.remove('open'); renderAddFormCustomFields(); }
+function renderFieldsList(){
+  const wrap = document.getElementById('fieldsList');
+  if(!customFields.length){
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:12.5px;padding:8px 0;">No extra fields yet.</div>';
+  } else {
+    wrap.innerHTML = customFields.map((f,i)=>`
+      <div class="catRow">
+        <input type="text" value="${escAttr(f.label)}" data-idx="${i}" class="fieldLabelInput"/>
+        <select data-idx="${i}" class="fieldTypeSelect">
+          <option value="text" ${f.type==='text'?'selected':''}>Short text</option>
+          <option value="textarea" ${f.type==='textarea'?'selected':''}>Long text</option>
+          <option value="gps" ${f.type==='gps'?'selected':''}>Short text + GPS box</option>
+        </select>
+        <button class="btn danger" data-idx="${i}" style="padding:5px 9px;">✕</button>
+      </div>`).join('');
+    wrap.querySelectorAll('.fieldLabelInput').forEach(el=>el.onchange=async()=>{
+      const old = customFields[el.dataset.idx].label;
+      customFields[el.dataset.idx].label = el.value;
+      logEvent('field', el.value, `Renamed from "${old}"`);
+      await saveCustomFields();
+    });
+    wrap.querySelectorAll('.fieldTypeSelect').forEach(el=>el.onchange=async()=>{
+      customFields[el.dataset.idx].type = el.value;
+      const typeName = el.value === 'textarea' ? 'long text' : el.value === 'gps' ? 'short text + GPS' : 'short text';
+      logEvent('field', customFields[el.dataset.idx].label, `Type changed to ${typeName}`);
+      await saveCustomFields();
+    });
+    wrap.querySelectorAll('.btn.danger').forEach(el=>el.onclick=async()=>{
+      const idx = parseInt(el.dataset.idx);
+      if(!confirm(`Remove field "${customFields[idx].label}"? Values already saved on locations are kept but hidden.`)) return;
+      const label = customFields[idx].label;
+      customFields.splice(idx,1);
+      logEvent('field', label, 'Field removed (existing values kept but hidden)');
+      await saveCustomFields();
+      renderFieldsList();
+    });
+  }
+}
+document.getElementById('addFieldBtn').onclick = async ()=>{
+  const label = prompt('New field name (e.g. "Splice Tech", "Permit Number"):');
+  if(!label) return;
+  const choice = prompt('Field type:\n1 = Simple (short text)\n2 = Long text\n3 = Simple + GPS box (for linking a location)\n\nEnter 1, 2, or 3:', '1');
+  const type = choice === '2' ? 'textarea' : (choice === '3' ? 'gps' : 'text');
+  const key = 'cf_' + label.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,24) + '_' + Date.now().toString(36).slice(-4);
+  customFields.push({key, label, type});
+  logEvent('field', label, `Field added (${type === 'textarea' ? 'long text' : type === 'gps' ? 'short text + GPS' : 'short text'})`);
+  await saveCustomFields();
+  renderFieldsList();
+};
+document.getElementById('manageFieldsBtn').onclick = openFieldsModal;
+
+function renderAddFormCustomFields(){
+  const wrap = document.getElementById('customFieldsAdd');
+  wrap.innerHTML = customFields.map(f=>{
+    if(f.type==='gps'){
+      return `<div class="field">
+        <label>${f.label}</label>
+        <input data-cf="${f.key}"/>
+        <input data-cf-gps="${f.key}" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
+      </div>`;
+    }
+    return `<div class="field">
+      <label>${f.label}</label>
+      ${f.type==='textarea' ? `<textarea data-cf="${f.key}"></textarea>` : `<input data-cf="${f.key}"/>`}
+    </div>`;
+  }).join('');
+}
+
+/* ---------- MAP ---------- */
+const map = L.map('map', {zoomControl:true}).setView([27.8, -81.5], 7);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19}).addTo(map);
+let markers = {};
+
+function catByKey(key){ return categories.find(c=>c.key===key) || {label:key, color:'#888'}; }
+
+function renderMarkers(list){
+  Object.values(markers).forEach(m=>map.removeLayer(m));
+  markers = {};
+  list.forEach(rec=>{
+    const color = catByKey(rec.type).color;
+    const marker = L.circleMarker([rec.lat, rec.lng], {radius:7, color, fillColor:color, fillOpacity:.85, weight:2}).addTo(map);
+    marker.bindTooltip(rec.label, {direction:'top', offset:[0,-6]});
+    marker.on('click', ()=>openDrawer(rec.id));
+    markers[rec.id] = marker;
+  });
+}
+
+/* ---------- FILTER CHIPS ---------- */
+function renderFilterChips(){
+  const wrap = document.getElementById('filterChips');
+  let html = `<div class="chip ${selectedType==='all'?'active':''}" data-type="all" style="${selectedType==='all'?'background:var(--text);color:#0b0e14;':''}">ALL</div>`;
+  categories.forEach(c=>{
+    const active = selectedType===c.key;
+    html += `<div class="chip ${active?'active':''}" data-type="${c.key}" style="${active?`background:${c.color};`:''}">${c.label.toUpperCase()}</div>`;
+  });
+  html += `<button class="manageCatBtn" id="manageCatBtn">⚙ Categories</button>`;
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.chip').forEach(chip=>{
+    chip.onclick = ()=>{ selectedType = chip.dataset.type; renderFilterChips(); renderList(); };
+  });
+  const mb = document.getElementById('manageCatBtn');
+  if(mb) mb.onclick = openCatModal;
+}
+
+/* ---------- LIST / TABLE ---------- */
+function filtered(){
+  const qRaw = document.getElementById('search').value.trim().toLowerCase();
+  const q = qRaw.replace(/\s+/g,' ');
+  return records.filter(r=>{
+    if(r.deleted) return false;
+    if(selectedType!=='all' && r.type!==selectedType) return false;
+    if(!q) return true;
+    const portConns = (r.ports||[]).map(p=>p.conn||'').join(' ');
+    const customVals = Object.values(r.custom||{}).map(v=> (v && typeof v==='object') ? `${v.value||''} ${v.gps||''}` : (v||'')).join(' ');
+    const gpsVariants = [`${r.lat}, ${r.lng}`, `${r.lat},${r.lng}`, `${r.lat} ${r.lng}`];
+    const hay = [r.label, r.ring, r.city, r.carrier, r.dataCenter, r.p2p, r.pm, r.notes, portConns, customVals,
+      r.backbone, r.metro, r.lateral, r.backboneGps, r.metroGps, r.lateralGps, r.serviceType,
+      String(r.lat), String(r.lng), ...gpsVariants].join(' ').toLowerCase();
+    const qNoSpace = q.replace(/\s+/g,'');
+    const hayNoSpace = hay.replace(/\s+/g,'');
+    const portNumMatch = /^\d+$/.test(q) && r.ports && r.ports[parseInt(q)-1] && r.ports[parseInt(q)-1].on;
+    return hay.includes(q) || hayNoSpace.includes(qNoSpace) || portNumMatch;
+  });
+}
+
+function activePortCount(r){ return (r.ports||[]).filter(p=>p.on).length; }
+
+function renderList(){
+  const list = filtered();
+  document.getElementById('countLine').textContent = list.length + ' record' + (list.length!==1?'s':'');
+  const listEl = document.getElementById('list');
+  listEl.innerHTML = list.map(r=>{
+    const cat = catByKey(r.type);
+    return `<div class="item ${r.id===selectedId?'selected':''}" onclick="openDrawer('${r.id}')">
+      <div class="dot" style="background:${cat.color}"></div>
+      <div class="item-main">
+        <div class="label">${r.label}</div>
+        <div class="sub">${r.ring||''} ${r.city?'· '+r.city:''}</div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="padding:20px;color:var(--muted);font-size:12px;">No matches.</div>';
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = list.map(r=>{
+    const cat = catByKey(r.type);
+    return `<tr onclick="openDrawer('${r.id}')">
+      <td><span class="type-pill" style="background:${cat.color}22;color:${cat.color}">${cat.label}</span></td>
+      <td>${r.label}</td><td>${r.ring||''}</td><td>${r.city||''}</td>
+      <td>${r.carrier||''}</td><td>${r.dataCenter||''}</td><td>${r.p2p||''}</td><td>${r.pm||''}</td>
+      <td>${activePortCount(r)}/${r.fiberCount}</td>
+      <td>${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</td>
+    </tr>`;
+  }).join('');
+
+  renderMarkers(list);
+}
+
+/* ---------- DRAWER (view + inline edit) ---------- */
+function openDrawer(id){
+  selectedId = id; editingRecordId = null;
+  renderDrawer();
+  const r = records.find(x=>x.id===id);
+  document.getElementById('drawer').classList.add('open');
+  map.flyTo([r.lat, r.lng], 12, {duration:.6});
+  renderList();
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  selectedId = null; editingRecordId = null;
+  renderList();
+}
+
+function renderDrawer(){
+  const r = records.find(x=>x.id===selectedId);
+  if(!r) return;
+  const cat = catByKey(r.type);
+  const isEditing = editingRecordId === r.id;
+
+  document.getElementById('dLabel').textContent = isEditing ? '' : r.label;
+  document.getElementById('dSub').textContent = isEditing ? '' : (cat.label + (r.ring?' · '+r.ring:'') + (r.city?' · '+r.city:''));
+  document.getElementById('dEditBtn').style.display = 'inline-block';
+  document.getElementById('dDeleteBtn').style.display = 'inline-block';
+  document.getElementById('dEditBtn').textContent = isEditing ? 'Save' : 'Edit';
+
+  const infoSection = document.getElementById('dInfoSection');
+  if(isEditing){
+    infoSection.innerHTML = `
+      <h4>Site Info (editing)</h4>
+      <div class="kv"><div class="k">${fieldLabels.category}</div><select id="eType">${categories.map(c=>`<option value="${c.key}" ${c.key===r.type?'selected':''}>${c.label}</option>`).join('')}</select></div>
+      <div class="kv"><div class="k">${fieldLabels.label}</div><input id="eLabel" value="${escAttr(r.label)}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.ring}</div><input id="eRing" list="ringOptions" value="${escAttr(r.ring||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.city}</div><input id="eCity" value="${escAttr(r.city||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.backbone}</div><input id="eBackbone" list="backboneOptions" value="${escAttr(r.backbone||'')}"/></div>
+      <div class="kv"><div class="k">Backbone GPS</div><input id="eBackboneGps" value="${escAttr(r.backboneGps||'')}" placeholder="lat, lng"/></div>
+      <div class="kv"><div class="k">${fieldLabels.metro}</div><input id="eMetro" list="metroOptions" value="${escAttr(r.metro||'')}"/></div>
+      <div class="kv"><div class="k">Metro GPS</div><input id="eMetroGps" value="${escAttr(r.metroGps||'')}" placeholder="lat, lng"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lateral}</div><input id="eLateral" list="lateralOptions" value="${escAttr(r.lateral||'')}"/></div>
+      <div class="kv"><div class="k">Lateral GPS</div><input id="eLateralGps" value="${escAttr(r.lateralGps||'')}" placeholder="lat, lng"/></div>
+      <div class="kv"><div class="k">${fieldLabels.carrier}</div><input id="eCarrier" value="${escAttr(r.carrier||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.dataCenter}</div><input id="eDataCenter" list="dataCenterOptions" value="${escAttr(r.dataCenter||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.p2p}</div><input id="eP2P" value="${escAttr(r.p2p||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.pm}</div><input id="ePM" value="${escAttr(r.pm||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eLat" value="${r.lat}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eLng" value="${r.lng}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.serviceType}</div><input id="eServiceType" value="${escAttr(r.serviceType||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.fiberCount}</div><select id="eFiberCount">${[12,24,36,48,60,72,84,96,108,120,144,168,192,216,240,264,288].map(n=>`<option ${n===r.fiberCount?'selected':''}>${n}</option>`).join('')}</select></div>
+      ${customFields.map(f=>{
+        const v = r.custom && r.custom[f.key];
+        if(f.type === 'gps'){
+          const val = (v && typeof v === 'object') ? (v.value||'') : (typeof v === 'string' ? v : '');
+          const gps = (v && typeof v === 'object') ? (v.gps||'') : '';
+          return `<div class="kv"><div class="k">${f.label}</div><input data-cf="${f.key}" value="${escAttr(val)}"/></div>
+                  <div class="kv"><div class="k">${f.label} GPS</div><input data-cf-gps="${f.key}" value="${escAttr(gps)}" placeholder="lat, lng"/></div>`;
+        }
+        return `<div class="kv"><div class="k">${f.label}</div>${f.type==='textarea'?`<textarea data-cf="${f.key}">${escHtml(v||'')}</textarea>`:`<input data-cf="${f.key}" value="${escAttr(v||'')}"/>`}</div>`;
+      }).join('')}
+    `;
+  } else {
+    infoSection.innerHTML = `
+      <h4>Site Info</h4>
+      <div class="coord" style="margin-bottom:8px;"><span>${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}</span><button onclick="copyCoord('${r.lat},${r.lng}')">Copy</button></div>
+      <div class="conn-list">
+        ${r.carrier?`${fieldLabels.carrier}: <b>${r.carrier}</b><br>`:''}
+        ${r.dataCenter?`${fieldLabels.dataCenter}: <b>${r.dataCenter}</b><br>`:''}
+        ${r.p2p?`${fieldLabels.p2p}: <b>${r.p2p}</b><br>`:''}
+        ${r.pm?`${fieldLabels.pm}: <b>${r.pm}</b><br>`:''}
+        ${r.backbone?`${fieldLabels.backbone}: <b>${r.backbone}</b>${r.backboneGps?' ('+r.backboneGps+')':''}<br>`:''}
+        ${r.metro?`${fieldLabels.metro}: <b>${r.metro}</b>${r.metroGps?' ('+r.metroGps+')':''}<br>`:''}
+        ${r.lateral?`${fieldLabels.lateral}: <b>${r.lateral}</b>${r.lateralGps?' ('+r.lateralGps+')':''}<br>`:''}
+        ${r.serviceType?`${fieldLabels.serviceType}: <b>${r.serviceType}</b><br>`:''}
+        ${fieldLabels.fiberCount}: <b>${r.fiberCount}</b>
+        ${customFields.filter(f=>{
+          const v = r.custom && r.custom[f.key];
+          return v && (typeof v === 'object' ? v.value : v);
+        }).map(f=>{
+          const v = r.custom[f.key];
+          const text = (typeof v === 'object') ? `${v.value}${v.gps?' ('+v.gps+')':''}` : v;
+          return `<br>${f.label}: <b>${text}</b>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  document.getElementById('dPortsHeader').textContent = `Ports (1–${r.fiberCount})`;
+  const portsWrap = document.getElementById('dPorts');
+  let html = '';
+  for(let i=0;i<r.fiberCount;i++){
+    if(i%12===0) html += `<div class="cassette-label">Cassette ${(i/12)+1} · Ports ${i+1}–${Math.min(i+12,r.fiberCount)}</div><div class="portgrid">`;
+    const p = r.ports[i] || {on:false, conn:'', dist:''};
+    html += `<div class="port ${p.on?'on':''} editable" data-idx="${i}" title="${p.conn?p.conn:''}">
+      <span class="n">P${i+1}</span>${p.on?'●':'—'}
+    </div>`;
+    if(i%12===11 || i===r.fiberCount-1) html += `</div>`;
+  }
+  portsWrap.innerHTML = html;
+  portsWrap.querySelectorAll('.port').forEach(el=>{
+    el.onclick = ()=>openPortModal(r.id, parseInt(el.dataset.idx));
+  });
+
+  document.getElementById('dNotes').innerHTML = isEditing ? '' : linkify(r.notes || '—');
+  if(isEditing){
+    document.getElementById('dNotes').innerHTML = `<textarea id="eNotes" style="width:100%;min-height:60px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:5px;padding:8px;font-family:var(--sans);font-size:12px;">${escHtml(r.notes||'')}</textarea>`;
+  }
+}
+function escAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+function escHtml(s){ return String(s).replace(/</g,'&lt;'); }
+function escapeHtmlFull(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function linkify(text){
+  const escaped = escapeHtmlFull(text || '');
+  return escaped.replace(/((https?:\/\/|www\.)[^\s<]+)/gi, (match)=>{
+    const href = /^https?:\/\//i.test(match) ? match : 'https://' + match;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:var(--row-accent); text-decoration:underline;">${match}</a>`;
+  });
+}
+
+document.getElementById('dEditBtn').onclick = async ()=>{
+  const r = records.find(x=>x.id===selectedId);
+  if(!r) return;
+  if(editingRecordId === r.id){
+    // Save
+    r.type = document.getElementById('eType').value;
+    r.label = document.getElementById('eLabel').value.trim() || r.label;
+    r.ring = document.getElementById('eRing').value;
+    r.city = document.getElementById('eCity').value;
+    r.carrier = document.getElementById('eCarrier').value;
+    r.dataCenter = document.getElementById('eDataCenter').value;
+    r.p2p = document.getElementById('eP2P').value;
+    r.pm = document.getElementById('ePM').value;
+    r.lat = parseFloat(document.getElementById('eLat').value) || r.lat;
+    r.lng = parseFloat(document.getElementById('eLng').value) || r.lng;
+    r.backbone = document.getElementById('eBackbone').value;
+    r.backboneGps = document.getElementById('eBackboneGps').value;
+    r.metro = document.getElementById('eMetro').value;
+    r.metroGps = document.getElementById('eMetroGps').value;
+    r.lateral = document.getElementById('eLateral').value;
+    r.lateralGps = document.getElementById('eLateralGps').value;
+    r.serviceType = document.getElementById('eServiceType').value;
+    registerOptionValue('ring', r.ring);
+    registerOptionValue('dataCenter', r.dataCenter);
+    registerOptionValue('backbone', r.backbone);
+    registerOptionValue('metro', r.metro);
+    registerOptionValue('lateral', r.lateral);
+    refreshDatalists();
+    const newCount = parseInt(document.getElementById('eFiberCount').value);
+    if(newCount !== r.fiberCount){
+      const oldPorts = r.ports || [];
+      r.ports = Array.from({length:newCount}, (_,i)=> oldPorts[i] || {on:false, conn:'', dist:''});
+      r.fiberCount = newCount;
+    }
+    r.notes = document.getElementById('eNotes').value;
+    r.custom = r.custom || {};
+    customFields.forEach(f=>{
+      if(f.type === 'gps'){
+        const valEl = document.querySelector(`#dInfoSection [data-cf="${f.key}"]`);
+        const gpsEl = document.querySelector(`#dInfoSection [data-cf-gps="${f.key}"]`);
+        r.custom[f.key] = {value:(valEl?valEl.value:''), gps:(gpsEl?gpsEl.value:'')};
+      } else {
+        const el = document.querySelector(`#dInfoSection [data-cf="${f.key}"]`);
+        if(el) r.custom[f.key] = el.value;
+      }
+    });
+    r.updatedAt = Date.now();
+    editingRecordId = null;
+    logEvent('edit', r.label, 'Site info updated');
+    await saveRecords();
+    renderDrawer(); renderList();
+  } else {
+    editingRecordId = r.id;
+    renderDrawer();
+  }
+};
+
+document.getElementById('dDeleteBtn').onclick = async ()=>{
+  const r = records.find(x=>x.id===selectedId);
+  if(!r) return;
+  if(!confirm(`Delete "${r.label}"? It will be moved to Recently Deleted and kept for ${RETENTION_DAYS} days before permanent removal.`)) return;
+  r.deleted = true;
+  r.deletedAt = Date.now();
+  logEvent('delete', r.label, `${catByKey(r.type).label} · ${r.city||''}`);
+  await saveRecords();
+  closeDrawer();
+};
+
+async function restoreRecord(id){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  r.deleted = false;
+  r.deletedAt = null;
+  logEvent('restore', r.label, 'Restored from Recently Deleted');
+  await saveRecords();
+  renderSettingsBody();
+  renderList();
+}
+
+function copyCoord(t){
+  navigator.clipboard.writeText(t).catch(()=>{});
+}
+
+/* ---------- PORT EDIT MODAL ---------- */
+function openPortModal(recordId, idx){
+  activePortEdit = {recordId, idx};
+  const r = records.find(x=>x.id===recordId);
+  const p = r.ports[idx] || {on:false, conn:'', dist:''};
+  document.getElementById('portModalTitle').textContent = `${r.label} — Port ${idx+1}`;
+  document.getElementById('pStatus').value = p.on ? 'on' : 'off';
+  document.getElementById('pConn').value = p.conn || '';
+  document.getElementById('pDist').value = p.dist || '';
+  document.getElementById('portModal').classList.add('open');
+}
+function closePortModal(){ document.getElementById('portModal').classList.remove('open'); activePortEdit = null; }
+document.getElementById('pSaveBtn').onclick = async ()=>{
+  if(!activePortEdit) return;
+  const r = records.find(x=>x.id===activePortEdit.recordId);
+  const on = document.getElementById('pStatus').value === 'on';
+  r.ports[activePortEdit.idx] = {on, conn:document.getElementById('pConn').value, dist:document.getElementById('pDist').value};
+  r.updatedAt = Date.now();
+  logEvent('port', r.label, `Port ${activePortEdit.idx+1} set to ${on?'On':'Off'}${document.getElementById('pConn').value ? ' → '+document.getElementById('pConn').value : ''}`);
+  await saveRecords();
+  closePortModal();
+  renderDrawer(); renderList();
+};
+
+/* ---------- ADD LOCATION MODAL ---------- */
+function refreshTypeSelect(){
+  document.getElementById('fType').innerHTML = categories.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+}
+document.getElementById('btnAdd').onclick = ()=>{
+  refreshTypeSelect();
+  refreshDatalists();
+  ['fLabel','fRing','fCity','fCarrier','fDataCenter','fP2P','fPM','fLat','fLng','fNotes',
+   'fBackbone','fBackboneGps','fMetro','fMetroGps','fLateral','fLateralGps','fServiceType'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fFiberCount').value = '24';
+  document.getElementById('locModalTitle').textContent = 'Add Location';
+  renderAddFormCustomFields();
+  document.getElementById('locModal').classList.add('open');
+};
+function closeLocModal(){ document.getElementById('locModal').classList.remove('open'); }
+document.getElementById('fSaveBtn').onclick = async ()=>{
+  const label = document.getElementById('fLabel').value.trim();
+  if(!label){ alert('Label is required.'); return; }
+  const fiberCount = parseInt(document.getElementById('fFiberCount').value);
+  const custom = {};
+  customFields.forEach(f=>{
+    if(f.type === 'gps'){
+      const valEl = document.querySelector(`#customFieldsAdd [data-cf="${f.key}"]`);
+      const gpsEl = document.querySelector(`#customFieldsAdd [data-cf-gps="${f.key}"]`);
+      custom[f.key] = {value:(valEl?valEl.value:''), gps:(gpsEl?gpsEl.value:'')};
+    } else {
+      const el = document.querySelector(`#customFieldsAdd [data-cf="${f.key}"]`);
+      custom[f.key] = el ? el.value : '';
+    }
+  });
+  const rec = {
+    id:'loc'+Date.now(),
+    type: document.getElementById('fType').value,
+    label,
+    ring: document.getElementById('fRing').value,
+    city: document.getElementById('fCity').value,
+    carrier: document.getElementById('fCarrier').value,
+    dataCenter: document.getElementById('fDataCenter').value,
+    p2p: document.getElementById('fP2P').value,
+    pm: document.getElementById('fPM').value,
+    lat: parseFloat(document.getElementById('fLat').value) || 0,
+    lng: parseFloat(document.getElementById('fLng').value) || 0,
+    fiberCount,
+    ports: Array.from({length:fiberCount}, ()=>({on:false, conn:'', dist:''})),
+    notes: document.getElementById('fNotes').value,
+    backbone: document.getElementById('fBackbone').value,
+    backboneGps: document.getElementById('fBackboneGps').value,
+    metro: document.getElementById('fMetro').value,
+    metroGps: document.getElementById('fMetroGps').value,
+    lateral: document.getElementById('fLateral').value,
+    lateralGps: document.getElementById('fLateralGps').value,
+    serviceType: document.getElementById('fServiceType').value,
+    custom,
+    updatedAt: Date.now()
+  };
+  records.push(rec);
+  registerOptionValue('ring', rec.ring);
+  registerOptionValue('dataCenter', rec.dataCenter);
+  registerOptionValue('backbone', rec.backbone);
+  registerOptionValue('metro', rec.metro);
+  registerOptionValue('lateral', rec.lateral);
+  refreshDatalists();
+  logEvent('add', rec.label, `${catByKey(rec.type).label} · ${rec.city||''}`);
+  await saveRecords();
+  closeLocModal();
+  renderList();
+};
+
+/* ---------- MANAGE CATEGORIES MODAL ---------- */
+function openCatModal(){ renderCatList(); document.getElementById('catModal').classList.add('open'); }
+function closeCatModal(){ document.getElementById('catModal').classList.remove('open'); renderFilterChips(); renderList(); }
+function renderCatList(){
+  const wrap = document.getElementById('catList');
+  wrap.innerHTML = categories.map((c,i)=>`
+    <div class="catRow">
+      <input type="color" value="${c.color}" data-idx="${i}" class="catColor"/>
+      <input type="text" value="${escAttr(c.label)}" data-idx="${i}" class="catLabel"/>
+      <button class="btn danger" data-idx="${i}" style="padding:5px 9px;">✕</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.catColor').forEach(el=>el.onchange = async ()=>{
+    categories[el.dataset.idx].color = el.value; await saveCategories();
+  });
+  wrap.querySelectorAll('.catLabel').forEach(el=>el.onchange = async ()=>{
+    const old = categories[el.dataset.idx].label;
+    categories[el.dataset.idx].label = el.value;
+    logEvent('cat', el.value, `Renamed category from "${old}"`);
+    await saveCategories();
+  });
+  wrap.querySelectorAll('.btn.danger').forEach(el=>el.onclick = async ()=>{
+    const idx = parseInt(el.dataset.idx);
+    const key = categories[idx].key;
+    const label = categories[idx].label;
+    const inUse = records.some(r=>r.type===key);
+    if(inUse && !confirm('Some locations use this category. Delete anyway? (their category will show as unknown)')) return;
+    categories.splice(idx,1);
+    logEvent('cat', label, 'Category deleted');
+    await saveCategories();
+    renderCatList();
+  });
+}
+document.getElementById('addCatBtn').onclick = async ()=>{
+  const label = prompt('New category name:');
+  if(!label) return;
+  const key = label.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,20) + '_' + Date.now().toString(36).slice(-4);
+  categories.push({key, label, color:'#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0')});
+  logEvent('cat', label, 'Category added');
+  await saveCategories();
+  renderCatList();
+};
+
+/* ---------- SETTINGS MODAL ---------- */
+let settingsTab = 'how';
+document.getElementById('settingsBtn').onclick = ()=>{
+  document.getElementById('settingsModal').classList.add('open');
+  renderSettingsBody();
+};
+function closeSettingsModal(){ document.getElementById('settingsModal').classList.remove('open'); }
+document.querySelectorAll('.settingsTab').forEach(tab=>{
+  tab.onclick = ()=>{
+    document.querySelectorAll('.settingsTab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    settingsTab = tab.dataset.tab;
+    renderSettingsBody();
+  };
+});
+
+function timeAgo(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function renderSettingsBody(){
+  const body = document.getElementById('settingsBody');
+  if(settingsTab === 'how'){
+    body.innerHTML = `<div class="howHtml">
+      <h5>Your data stays internal</h5>
+      <p>This tool doesn't send or share anything outside the company. It's simply a way to view and organize the location, port, and connection data that the person who set it up has shared with you. Nothing here is posted publicly or made available on the internet.</p>
+      <h5>How updates get to you</h5>
+      <p>Whoever maintains this dashboard sends out an updated file (Egnyte, email, Teams — wherever your team already shares files) whenever something changes. Open Settings → Data → Import JSON and load that file to bring your view current.</p>
+      <h5>If your browser resets, or you switch browsers/computers</h5>
+      <p>You'll need to import the latest JSON file again from wherever it's kept — your local computer or the shared file location your team uses. That's expected, not an error.</p>
+      <h5>Nothing is ever deleted immediately</h5>
+      <p>Deleting a location doesn't erase it — it moves to <b>Recently Deleted</b> and stays there, recoverable, for ${RETENTION_DAYS} days. Every add, edit, delete, restore, port change, and category change is written to the <b>Activity Log</b>, and log entries also stay for ${RETENTION_DAYS} days before aging out automatically. Nothing in either list can be force-removed early.</p>
+      <h5>About the export password</h5>
+      <p>The password stops someone from generating a convincing-looking export without knowing it. Each export is also signed with a checksum baked into this file's code — when you or the NOC import a file, the badge tells you whether it matches what this tool actually produced. It's a good guard against a hand-edited or mistaken file, not a cryptographic guarantee against someone who has the tool's own source code.</p>
+    </div>`;
+  } else if(settingsTab === 'log'){
+    if(!activityLog.length){
+      body.innerHTML = '<div style="color:var(--muted);font-size:12.5px;padding:10px 0;">No activity recorded yet.</div>';
+      return;
+    }
+    body.innerHTML = activityLog.map(e=>`
+      <div class="logEntry">
+        <span class="badge ${e.action}">${e.action.toUpperCase()}</span>
+        <div class="meta"><b style="font-family:var(--mono);">${e.label}</b><br><span style="color:var(--muted);">${e.details}</span></div>
+        <span class="ts">${timeAgo(e.ts)}</span>
+      </div>`).join('');
+  } else if(settingsTab === 'deleted'){
+    const deleted = records.filter(r=>r.deleted);
+    if(!deleted.length){
+      body.innerHTML = '<div style="color:var(--muted);font-size:12.5px;padding:10px 0;">Nothing in Recently Deleted.</div>';
+      return;
+    }
+    body.innerHTML = deleted.map(r=>{
+      const daysLeft = RETENTION_DAYS - Math.floor((Date.now()-r.deletedAt)/(24*60*60*1000));
+      return `<div class="delRow">
+        <div><b style="font-family:var(--mono);">${r.label}</b> <span style="color:var(--muted);">· ${catByKey(r.type).label} · ${r.city||''}</span><br>
+        <span class="days">Deleted ${timeAgo(r.deletedAt)} · purges automatically in ${Math.max(daysLeft,0)} day${daysLeft===1?'':'s'}</span></div>
+        <button class="btn" onclick="restoreRecord('${r.id}')">Restore</button>
+      </div>`;
+    }).join('');
+  } else if(settingsTab === 'data'){
+    renderDataTab(body);
+  } else if(settingsTab === 'labels'){
+    renderLabelsTab(body);
+  } else if(settingsTab === 'lists'){
+    renderListsTab(body);
+  }
+}
+
+function countUsage(fieldKey, value){
+  return records.filter(r=>!r.deleted && (r[fieldKey]||'').trim().toLowerCase() === value.trim().toLowerCase()).length;
+}
+function renameOptionValue(fieldKey, oldVal, newVal){
+  const idx = (fieldOptions[fieldKey]||[]).findIndex(v=>v.toLowerCase()===oldVal.toLowerCase());
+  if(idx !== -1) fieldOptions[fieldKey][idx] = newVal;
+  else { fieldOptions[fieldKey] = fieldOptions[fieldKey] || []; fieldOptions[fieldKey].push(newVal); }
+  let count = 0;
+  records.forEach(r=>{
+    if(!r.deleted && (r[fieldKey]||'').trim().toLowerCase() === oldVal.trim().toLowerCase()){
+      r[fieldKey] = newVal;
+      r.updatedAt = Date.now();
+      count++;
+    }
+  });
+  logEvent('field', newVal, `Renamed "${oldVal}" → "${newVal}" in ${fieldLabels[fieldKey]} (${count} site${count===1?'':'s'} updated)`);
+  saveFieldOptions();
+  saveRecords();
+  refreshDatalists();
+  renderList();
+}
+function deleteOptionValue(fieldKey, val){
+  const count = countUsage(fieldKey, val);
+  const msg = count > 0
+    ? `"${val}" is currently used by ${count} site${count===1?'':'s'}. Removing it here only takes it out of the suggestion list — those sites keep the value as-is. If this was a typo you want fixed everywhere, use Rename instead. Remove it from the list anyway?`
+    : `Remove "${val}" from this list? No sites currently use it.`;
+  if(!confirm(msg)) return;
+  fieldOptions[fieldKey] = (fieldOptions[fieldKey]||[]).filter(v=>v.toLowerCase()!==val.toLowerCase());
+  logEvent('field', val, `Removed from ${fieldLabels[fieldKey]} list (${count} site${count===1?'':'s'} still reference the old value)`);
+  saveFieldOptions();
+  refreshDatalists();
+  renderListsTab(document.getElementById('settingsBody'));
+}
+function renderListsTab(body){
+  const fields = [['ring',fieldLabels.ring],['dataCenter',fieldLabels.dataCenter],['backbone',fieldLabels.backbone],['metro',fieldLabels.metro],['lateral',fieldLabels.lateral]];
+  body.innerHTML = `<div class="howHtml"><p>Rename fixes a typo everywhere it's used — every site with that value updates automatically. Remove just cleans up the suggestion list without touching existing sites.</p></div>` +
+    fields.map(([key,label])=>{
+      const values = fieldOptions[key]||[];
+      const rows = values.length ? values.map(v=>{
+        const count = countUsage(key, v);
+        return `<div class="delRow">
+          <div><b style="font-family:var(--mono);">${v}</b> <span class="days">· used by ${count} site${count===1?'':'s'}</span></div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn" data-field="${key}" data-val="${escAttr(v)}" data-act="rename">Rename</button>
+            <button class="btn danger" data-field="${key}" data-val="${escAttr(v)}" data-act="delete">Remove</button>
+          </div>
+        </div>`;
+      }).join('') : '<div style="color:var(--muted);font-size:12px;padding:6px 0 14px;">No values yet.</div>';
+      return `<h5 style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:16px 0 6px;font-family:var(--mono);">${label}</h5>${rows}`;
+    }).join('');
+  body.querySelectorAll('button[data-act]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const field = btn.dataset.field, val = btn.dataset.val, act = btn.dataset.act;
+      if(act === 'rename'){
+        const next = prompt(`Rename "${val}" to:`, val);
+        if(next && next.trim() && next.trim().toLowerCase() !== val.toLowerCase()) renameOptionValue(field, val, next.trim());
+        renderListsTab(body);
+      } else {
+        deleteOptionValue(field, val);
+      }
+    };
+  });
+}
+
+function renderDataTab(body){
+  body.innerHTML = `
+    <div class="howHtml">
+      <h5>Share with NOC</h5>
+      <p>Export a signed snapshot of every location, category, and port assignment — plus the full 365-day Activity Log, so whoever opens it can see exactly what changed and when since the last file. Requires the export password. Drop the resulting file in your shared folder (Egnyte, etc.) for NOC to pick up.</p>
+      <p>When you import, anything matching an existing site (by name or GPS location) is never silently overwritten — you'll always get a side-by-side review to pick which version to keep.</p>
+    </div>
+    <div class="dataTabBtns">
+      <button class="btn primary" id="dataExportBtn">Export JSON</button>
+      <button class="btn" id="dataImportBtn">Import JSON</button>
+      <input type="file" id="jsonFile" accept=".json" style="display:none;"/>
+    </div>
+    <div class="howHtml">
+      <h5>Mass upload from a spreadsheet</h5>
+      <p>Download the CSV template, fill it in Excel or Google Sheets, then import it back. Columns: type, label, ring, city, carrier, data_center, point_to_point, area_pm, lat, lng, fiber_count, active_ports, notes.</p>
+    </div>
+    <div class="dataTabBtns">
+      <button class="btn" id="dataTemplateBtn">CSV Template</button>
+      <button class="btn" id="dataCsvImportBtn">Import CSV</button>
+      <input type="file" id="csvFile2" accept=".csv" style="display:none;"/>
+    </div>
+    <div id="importVerifyResult"></div>
+  `;
+  document.getElementById('dataExportBtn').onclick = openExportModal;
+  document.getElementById('dataTemplateBtn').onclick = downloadCsvTemplate;
+  document.getElementById('dataImportBtn').onclick = ()=>document.getElementById('jsonFile').click();
+  document.getElementById('jsonFile').addEventListener('change', handleJsonImport);
+  document.getElementById('dataCsvImportBtn').onclick = ()=>document.getElementById('csvFile2').click();
+  document.getElementById('csvFile2').addEventListener('change', handleCsvImport);
+}
+
+function renderLabelsTab(body){
+  const map = [['category','Category'],['fiberCount','Fiber Count'],['label','Label / Site Name'],['ring','Ring / Segment'],
+    ['city','City / Location'],['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],
+    ['carrier','Carrier Name'],['dataCenter','Data Center'],['p2p','Point to Point'],
+    ['pm','Hotwire Area PM'],['lat','Latitude'],['lng','Longitude'],['serviceType','Service Type'],['notes','Notes']];
+  body.innerHTML = `<div class="howHtml"><p>Rename any field label used in the Add Location form and location details. Changes apply immediately.</p></div>` +
+    map.map(([key])=>`<div class="labelRow"><span>${key}</span><input data-key="${key}" value="${escAttr(fieldLabels[key])}"/></div>`).join('');
+  body.querySelectorAll('.labelRow input').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      fieldLabels[inp.dataset.key] = inp.value || fieldLabels[inp.dataset.key];
+      saveFieldLabels();
+      applyFieldLabels();
+      if(selectedId) renderDrawer();
+    });
+  });
+}
+
+/* ---------- VIEW TOGGLE ---------- */
+document.getElementById('tabMap').onclick = ()=>{
+  document.getElementById('tabMap').classList.add('active');
+  document.getElementById('tabTable').classList.remove('active');
+  document.getElementById('map').style.display='block';
+  document.getElementById('tableWrap').style.display='none';
+  setTimeout(()=>map.invalidateSize(), 50);
+};
+document.getElementById('tabTable').onclick = ()=>{
+  document.getElementById('tabTable').classList.add('active');
+  document.getElementById('tabMap').classList.remove('active');
+  document.getElementById('map').style.display='none';
+  document.getElementById('tableWrap').style.display='block';
+};
+
+/* ---------- SEARCH ---------- */
+document.getElementById('search').addEventListener('input', renderList);
+
+/* ---------- CSV TEMPLATE + IMPORT (called from Settings > Data) ---------- */
+function downloadCsvTemplate(){
+  const headers = ['type','label','ring','city','carrier','data_center','point_to_point','area_pm','lat','lng','fiber_count','active_ports','notes',
+    'backbone','backbone_gps','metro','metro_gps','lateral','lateral_gps','service_type'];
+  const example = ['cab','TPA Ring1 Seg5 Cab5','TPA Ring 1 · Seg 5','Tampa, FL','Zayo','HW Tampa 365','TPA->MCO 42.09km','J. Sanchez','27.9600','-82.4600','24','1|2|7|8','Example row - delete before mass upload',
+    'TPA Backbone A','27.9500,-82.4600','TPA Metro 1','27.9520,-82.4550','TPA Lateral 3','27.9600,-82.4500','Lit'];
+  const csv = headers.join(',') + '\n' + example.join(',') + '\n';
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'fiber-network-template.csv'; a.click();
+}
+
+function handleCsvImport(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: async function(results){
+      const rows = results.data;
+      const validKeys = categories.map(c=>c.key);
+      const imported = rows.map((row,i)=>{
+        const norm = {}; Object.keys(row).forEach(k=>norm[k.trim().toLowerCase()] = row[k]);
+        const fiberCount = parseInt(norm.fiber_count) || 24;
+        const activeSet = new Set((norm.active_ports||'').split(/[|,]/).map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)));
+        return {
+          id:'imp'+i+'_'+Date.now(),
+          type: validKeys.includes((norm.type||'').toLowerCase()) ? norm.type.toLowerCase() : (categories[0]?.key || 'cab'),
+          label: norm.label || ('Imported ' + i),
+          ring: norm.ring || '', city: norm.city || '',
+          carrier: norm.carrier || '', dataCenter: norm.data_center || '',
+          p2p: norm.point_to_point || '', pm: norm.area_pm || '',
+          lat: parseFloat(norm.lat) || 0, lng: parseFloat(norm.lng) || 0,
+          fiberCount,
+          ports: Array.from({length:fiberCount}, (_,idx)=>({on:activeSet.has(idx+1), conn:'', dist:''})),
+          notes: norm.notes || '',
+          backbone: norm.backbone || '', backboneGps: norm.backbone_gps || '',
+          metro: norm.metro || '', metroGps: norm.metro_gps || '',
+          lateral: norm.lateral || '', lateralGps: norm.lateral_gps || '',
+          serviceType: norm.service_type || '',
+          custom: {},
+          updatedAt: Date.now()
+        };
+      }).filter(r=>r.lat && r.lng);
+      records = records.concat(imported);
+      imported.forEach(r=>{
+        registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
+        registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro); registerOptionValue('lateral', r.lateral);
+      });
+      refreshDatalists();
+      logEvent('add', `${imported.length} locations`, `Mass import from ${file.name}`);
+      await saveRecords();
+      renderList();
+      alert(imported.length + ' locations imported from ' + file.name);
+    }
+  });
+  e.target.value = '';
+}
+
+/* ---------- SIGNED JSON EXPORT / IMPORT ---------- */
+function haversineKm(lat1,lon1,lat2,lon2){
+  const R=6371;
+  const dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function findLocalMatch(incoming, pool){
+  let match = pool.find(r=>!r.deleted && r.label.trim().toLowerCase() === (incoming.label||'').trim().toLowerCase());
+  if(match) return match;
+  if(incoming.lat && incoming.lng){
+    match = pool.find(r=>!r.deleted && haversineKm(r.lat,r.lng,incoming.lat,incoming.lng) < 0.05);
+  }
+  return match || null;
+}
+function diffFields(mine, incoming){
+  const fields = [['ring','Ring/Seg'],['city','City'],['carrier','Carrier'],['dataCenter','Data Center'],
+    ['p2p','Point to Point'],['pm','Area PM'],['lat','Latitude'],['lng','Longitude'],['fiberCount','Fiber Count'],['notes','Notes'],
+    ['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],['backboneGps','Backbone GPS'],['metroGps','Metro GPS'],['lateralGps','Lateral GPS'],['serviceType','Service Type']];
+  const diffs = [];
+  fields.forEach(([k,label])=>{ if(String(mine[k]||'') !== String(incoming[k]||'')) diffs.push(label); });
+  const customKeys = new Set([...Object.keys(mine.custom||{}), ...Object.keys(incoming.custom||{})]);
+  let customDiff = false;
+  customKeys.forEach(k=>{
+    const a = JSON.stringify((mine.custom||{})[k] ?? null);
+    const b = JSON.stringify((incoming.custom||{})[k] ?? null);
+    if(a !== b) customDiff = true;
+  });
+  if(customDiff) diffs.push('Extra fields');
+  if(JSON.stringify(mine.ports||[]) !== JSON.stringify(incoming.ports||[])) diffs.push('Ports');
+  return diffs;
+}
+
+let pendingImport = null; // {conflicts:[{mine,incoming,choice}], newRecords:[], meta:{}}
+function simpleHash(str){
+  let hash = 0;
+  for(let i=0;i<str.length;i++){ hash = (hash*31 + str.charCodeAt(i)) >>> 0; }
+  return hash.toString(16);
+}
+function signPayload(payload){ return simpleHash(JSON.stringify(payload) + EXPORT_SALT); }
+
+function openExportModal(){
+  closeSettingsModal();
+  document.getElementById('exportPw').value = '';
+  document.getElementById('exportNote').value = '';
+  document.getElementById('exportModal').classList.add('open');
+}
+function closeExportModal(){ document.getElementById('exportModal').classList.remove('open'); }
+document.getElementById('pwEyeBtn').onclick = ()=>{
+  const pw = document.getElementById('exportPw');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+};
+document.getElementById('exportConfirmBtn').onclick = ()=>{
+  const pw = document.getElementById('exportPw').value;
+  if(pw !== EXPORT_PASSWORD){ alert('Incorrect export password.'); return; }
+  const now = new Date();
+  const pad = n=>String(n).padStart(2,'0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const payload = {
+    records, categories, fieldLabels, customFields, activityLog, fieldOptions,
+    exportedAt: now.toISOString(),
+    exportNote: document.getElementById('exportNote').value || '',
+    exportedFrom: (document.getElementById('brandTitle').textContent || 'Hotwire NOC Fiber Desk').trim()
+  };
+  const signature = signPayload(payload);
+  const blob = new Blob([JSON.stringify({...payload, signature}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `fiber-network-export_${stamp}.json`;
+  a.click();
+  logEvent('edit', 'Export created', `${stamp}${payload.exportNote ? ' — '+payload.exportNote : ''}`);
+  closeExportModal();
+};
+
+function handleJsonImport(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev){
+    let data;
+    try{ data = JSON.parse(ev.target.result); }
+    catch(err){ alert('That file is not valid JSON.'); return; }
+    const {signature, ...rest} = data;
+    const expected = signPayload(rest);
+    const verified = signature === expected;
+    const resultBox = document.getElementById('importVerifyResult');
+    if(resultBox){
+      resultBox.innerHTML = verified
+        ? `<div class="verifyBadge ok">✅ Verified — matches an export from this tool${data.exportedAt ? ' · '+new Date(data.exportedAt).toLocaleString() : ''}</div>`
+        : `<div class="verifyBadge bad">⚠️ Unverified — this file's signature doesn't match. It may have been edited outside the tool.</div>`;
+    }
+    if(!verified && !confirm("This file's signature doesn't match what this tool produces — it may have been altered. Import anyway?")) return;
+    if(!Array.isArray(data.records)){ alert('This file has no location data to import.'); return; }
+
+    // Merge non-record entities immediately — these aren't "duplicates" in the same sense
+    if(Array.isArray(data.categories)) categories = data.categories;
+    if(data.fieldLabels) fieldLabels = data.fieldLabels;
+    if(data.fieldOptions){
+      Object.keys(data.fieldOptions).forEach(k=>{
+        if(!fieldOptions[k]) fieldOptions[k] = [];
+        (data.fieldOptions[k]||[]).forEach(v=>{
+          if(!fieldOptions[k].some(x=>x.toLowerCase()===v.toLowerCase())) fieldOptions[k].push(v);
+        });
+      });
+      saveFieldOptions();
+    }
+    let newFieldCount = 0;
+    const newFieldNames = [];
+    if(Array.isArray(data.customFields)){
+      data.customFields.forEach(f=>{
+        const localIdx = customFields.findIndex(x=>x.key===f.key);
+        if(localIdx === -1){ customFields.push(f); newFieldCount++; newFieldNames.push(f.label); }
+        else customFields[localIdx] = f;
+      });
+    }
+    if(Array.isArray(data.activityLog)){
+      const merged = [...activityLog, ...data.activityLog];
+      const seen = new Set();
+      activityLog = merged.filter(en=>{
+        const key = en.ts+'|'+en.action+'|'+en.label;
+        if(seen.has(key)) return false;
+        seen.add(key); return true;
+      }).sort((a,b)=>b.ts-a.ts);
+    }
+    purgeExpired();
+
+    // Detect duplicates by label match (or GPS proximity) against current records
+    const newRecords = [];
+    const conflicts = [];
+    data.records.forEach(incoming=>{
+      const mine = findLocalMatch(incoming, records);
+      if(!mine){
+        newRecords.push(incoming);
+      } else {
+        conflicts.push({mine, incoming, diffs: diffFields(mine, incoming), choice:'incoming'});
+      }
+    });
+
+    saveCategories(); saveFieldLabels(); saveCustomFields(); await saveLog();
+    applyFieldLabels(); renderFilterChips();
+
+    const meta = {fileName:file.name, exportNote:data.exportNote||'', verified, newFieldCount, newFieldNames};
+
+    if(conflicts.length === 0){
+      records = records.concat(newRecords);
+      newRecords.forEach(r=>{
+        registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
+        registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro); registerOptionValue('lateral', r.lateral);
+      });
+      refreshDatalists();
+      logEvent('edit', 'Data imported', `${newRecords.length} new locations from ${file.name}${data.exportNote ? ' — '+data.exportNote : ''}${newFieldCount ? ` · ${newFieldCount} new field(s) picked up` : ''}`);
+      await saveRecords();
+      renderList();
+      alert(`Imported ${newRecords.length} new location(s)${verified ? ' (verified)' : ' (unverified — proceed with care)'}. No duplicates found.${newFieldCount ? ` Picked up ${newFieldCount} new field(s): ${newFieldNames.join(', ')}.` : ''}`);
+    } else {
+      pendingImport = {newRecords, conflicts, meta};
+      openConflictModal();
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/* ---------- CONFLICT REVIEW ---------- */
+function openConflictModal(){
+  const {conflicts, newRecords} = pendingImport;
+  document.getElementById('conflictSummary').textContent =
+    `${conflicts.length} site${conflicts.length===1?'':'s'} already exist in your data and also appear in this file. `+
+    `${newRecords.length} brand-new site${newRecords.length===1?'':'s'} will be added automatically. `+
+    `Choose which version to keep for each match below, or use the buttons to apply one choice to all.`;
+  renderConflictList();
+  document.getElementById('conflictModal').classList.add('open');
+}
+function closeConflictModalOnly(){ document.getElementById('conflictModal').classList.remove('open'); }
+function cancelConflictReview(){
+  pendingImport = null;
+  closeConflictModalOnly();
+}
+function fmtWhen(ts){ return ts ? new Date(ts).toLocaleString() : 'Unknown'; }
+
+function renderConflictList(){
+  const wrap = document.getElementById('conflictList');
+  const {conflicts, meta} = pendingImport;
+  wrap.innerHTML = conflicts.map((c,i)=>{
+    const diffText = c.diffs.length ? `Differs: ${c.diffs.join(', ')}` : 'No differences found — safe either way';
+    const mineWhen = fmtWhen(c.mine.updatedAt);
+    const incWhen = fmtWhen(c.incoming.updatedAt || meta.exportedAt);
+    return `<div class="conflictRow" data-idx="${i}">
+      <div class="cHead">
+        <span class="cLabel">${c.mine.label}</span>
+        <span class="cDiff ${c.diffs.length?'':'none'}">${diffText}</span>
+      </div>
+      <div class="cChoices">
+        <div class="cSide ${c.choice==='mine'?'selected':''}" data-idx="${i}" data-choice="mine">
+          <div class="cSideHead"><span>MINE</span><span>${mineWhen}</span></div>
+          <div class="cSideBody">${c.mine.ring||''} ${c.mine.city?'· '+c.mine.city:''}</div>
+        </div>
+        <div class="cSide ${c.choice==='incoming'?'selected':''}" data-idx="${i}" data-choice="incoming">
+          <div class="cSideHead"><span>INCOMING</span><span>${incWhen}</span></div>
+          <div class="cSideBody">${c.incoming.ring||''} ${c.incoming.city?'· '+c.incoming.city:''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.cSide').forEach(el=>{
+    el.onclick = ()=>{
+      pendingImport.conflicts[el.dataset.idx].choice = el.dataset.choice;
+      renderConflictList();
+    };
+  });
+}
+document.getElementById('bulkKeepMineBtn').onclick = ()=>{
+  pendingImport.conflicts.forEach(c=>c.choice='mine');
+  renderConflictList();
+};
+document.getElementById('bulkKeepIncomingBtn').onclick = ()=>{
+  pendingImport.conflicts.forEach(c=>c.choice='incoming');
+  renderConflictList();
+};
+document.getElementById('applyConflictBtn').onclick = async ()=>{
+  const {conflicts, newRecords, meta} = pendingImport;
+  let keptMine = 0, keptIncoming = 0;
+  conflicts.forEach(c=>{
+    if(c.choice === 'incoming'){
+      const idx = records.findIndex(r=>r.id===c.mine.id);
+      if(idx !== -1) records[idx] = {...c.incoming, id:c.mine.id};
+      keptIncoming++;
+    } else {
+      keptMine++;
+    }
+  });
+  records = records.concat(newRecords);
+  [...newRecords, ...conflicts.filter(c=>c.choice==='incoming').map(c=>c.incoming)].forEach(r=>{
+    registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
+    registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro); registerOptionValue('lateral', r.lateral);
+  });
+  refreshDatalists();
+  logEvent('edit', 'Import resolved', `${meta.fileName}: ${newRecords.length} new · ${keptIncoming} updated from incoming · ${keptMine} kept as mine${meta.exportNote ? ' — '+meta.exportNote : ''}`);
+  await saveRecords();
+  renderList();
+  closeConflictModalOnly();
+  alert(`Import complete. ${newRecords.length} new, ${keptIncoming} updated, ${keptMine} kept unchanged.${meta.newFieldCount ? ` Picked up ${meta.newFieldCount} new field(s): ${meta.newFieldNames.join(', ')}.` : ''}`);
+  pendingImport = null;
+};
+
+/* ---------- INIT ---------- */
+document.getElementById('copyYear').textContent = new Date().getFullYear();
+loadData();
+</script>
+</body>
+</html>
