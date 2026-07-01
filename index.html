@@ -233,7 +233,10 @@
         <div class="field"><label id="lblLat">Latitude</label><input id="fLat" placeholder="27.9506"/></div>
         <div class="field"><label id="lblLng">Longitude</label><input id="fLng" placeholder="-82.4572"/></div>
       </div>
-      <div class="field"><label id="lblServiceType">Service Type</label><input id="fServiceType" placeholder="e.g. Lit, Dark, Wave"/></div>
+      <div class="row2">
+        <div class="field"><label id="lblServiceType">Service Type</label><input id="fServiceType" placeholder="e.g. Lit, Dark, Wave"/></div>
+        <div class="field"><label id="lblCircuitId">Circuit / Splice ID</label><input id="fCircuitId" placeholder="e.g. CKT-4471"/></div>
+      </div>
       <div class="field"><label id="lblNotes">Notes</label><textarea id="fNotes" placeholder="Anything the NOC should know…"></textarea></div>
       <div id="customFieldsAdd"></div>
       <button class="manageCatBtn" type="button" id="manageFieldsBtn" style="align-self:flex-start;">+ Manage Extra Fields</button>
@@ -412,7 +415,7 @@ let fieldLabels = {
   category:'Category', fiberCount:'Fiber Count', label:'Label / Site Name', ring:'Ring / Segment',
   city:'City / Location', carrier:'Carrier Name', dataCenter:'Data Center', p2p:'Point to Point',
   pm:'Hotwire Area PM', lat:'Latitude', lng:'Longitude', notes:'Notes',
-  backbone:'Backbone', metro:'Metro', lateral:'Lateral', serviceType:'Service Type'
+  backbone:'Backbone', metro:'Metro', lateral:'Lateral', serviceType:'Service Type', circuitId:'Circuit / Splice ID'
 };
 let fieldOptions = {ring:[], dataCenter:[], backbone:[], metro:[], lateral:[]};
 let customFields = []; // [{key, label, type:'text'|'textarea'}]
@@ -506,7 +509,7 @@ function applyFieldLabels(){
   const map = {lblCategory:'category', lblFiberCount:'fiberCount', lblLabel:'label', lblRing:'ring',
     lblCity:'city', lblCarrier:'carrier', lblDataCenter:'dataCenter', lblP2P:'p2p', lblPM:'pm',
     lblLat:'lat', lblLng:'lng', lblNotes:'notes', lblBackbone:'backbone', lblMetro:'metro',
-    lblLateral:'lateral', lblServiceType:'serviceType'};
+    lblLateral:'lateral', lblServiceType:'serviceType', lblCircuitId:'circuitId'};
   Object.keys(map).forEach(elId=>{
     const el = document.getElementById(elId);
     if(el) el.textContent = fieldLabels[map[elId]];
@@ -654,7 +657,7 @@ function filtered(){
     const customVals = Object.values(r.custom||{}).map(v=> (v && typeof v==='object') ? `${v.value||''} ${v.gps||''}` : (v||'')).join(' ');
     const gpsVariants = [`${r.lat}, ${r.lng}`, `${r.lat},${r.lng}`, `${r.lat} ${r.lng}`];
     const hay = [r.label, r.ring, r.city, r.carrier, r.dataCenter, r.p2p, r.pm, r.notes, portConns, customVals,
-      r.backbone, r.metro, r.lateral, r.backboneGps, r.metroGps, r.lateralGps, r.serviceType,
+      r.backbone, r.metro, r.lateral, r.backboneGps, r.metroGps, r.lateralGps, r.serviceType, r.circuitId,
       String(r.lat), String(r.lng), ...gpsVariants].join(' ').toLowerCase();
     const hayNoSpace = hay.replace(/\s+/g,'');
     return terms.some(q=>{
@@ -745,6 +748,7 @@ function renderDrawer(){
       <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eLat" value="${r.lat}"/></div>
       <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eLng" value="${r.lng}"/></div>
       <div class="kv"><div class="k">${fieldLabels.serviceType}</div><input id="eServiceType" value="${escAttr(r.serviceType||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.circuitId}</div><input id="eCircuitId" value="${escAttr(r.circuitId||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.fiberCount}</div><select id="eFiberCount">${[12,24,36,48,60,72,84,96,108,120,144,168,192,216,240,264,288].map(n=>`<option ${n===r.fiberCount?'selected':''}>${n}</option>`).join('')}</select></div>
       ${customFields.map(f=>{
         const v = r.custom && r.custom[f.key];
@@ -770,6 +774,7 @@ function renderDrawer(){
         ${r.metro?`${fieldLabels.metro}: <b>${r.metro}</b>${r.metroGps?' ('+r.metroGps+')':''}<br>`:''}
         ${r.lateral?`${fieldLabels.lateral}: <b>${r.lateral}</b>${r.lateralGps?' ('+r.lateralGps+')':''}<br>`:''}
         ${r.serviceType?`${fieldLabels.serviceType}: <b>${r.serviceType}</b><br>`:''}
+        ${r.circuitId?`${fieldLabels.circuitId}: <b>${r.circuitId}</b><br>`:''}
         ${fieldLabels.fiberCount}: <b>${r.fiberCount}</b>
         ${customFields.filter(f=>{
           const v = r.custom && r.custom[f.key];
@@ -837,6 +842,7 @@ document.getElementById('dEditBtn').onclick = async ()=>{
     r.lateral = document.getElementById('eLateral').value;
     r.lateralGps = document.getElementById('eLateralGps').value;
     r.serviceType = document.getElementById('eServiceType').value;
+    r.circuitId = document.getElementById('eCircuitId').value;
     registerOptionValue('ring', r.ring);
     registerOptionValue('dataCenter', r.dataCenter);
     registerOptionValue('backbone', r.backbone);
@@ -930,7 +936,7 @@ document.getElementById('btnAdd').onclick = ()=>{
   refreshTypeSelect();
   refreshDatalists();
   ['fLabel','fRing','fCity','fCarrier','fDataCenter','fP2P','fPM','fLat','fLng','fNotes',
-   'fBackbone','fBackboneGps','fMetro','fMetroGps','fLateral','fLateralGps','fServiceType'].forEach(id=>document.getElementById(id).value='');
+   'fBackbone','fBackboneGps','fMetro','fMetroGps','fLateral','fLateralGps','fServiceType','fCircuitId'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fFiberCount').value = '24';
   document.getElementById('locModalTitle').textContent = 'Add Location';
   renderAddFormCustomFields();
@@ -974,6 +980,7 @@ document.getElementById('fSaveBtn').onclick = async ()=>{
     lateral: document.getElementById('fLateral').value,
     lateralGps: document.getElementById('fLateralGps').value,
     serviceType: document.getElementById('fServiceType').value,
+    circuitId: document.getElementById('fCircuitId').value,
     custom,
     updatedAt: Date.now()
   };
@@ -1203,7 +1210,7 @@ function renderLabelsTab(body){
   const map = [['category','Category'],['fiberCount','Fiber Count'],['label','Label / Site Name'],['ring','Ring / Segment'],
     ['city','City / Location'],['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],
     ['carrier','Carrier Name'],['dataCenter','Data Center'],['p2p','Point to Point'],
-    ['pm','Hotwire Area PM'],['lat','Latitude'],['lng','Longitude'],['serviceType','Service Type'],['notes','Notes']];
+    ['pm','Hotwire Area PM'],['lat','Latitude'],['lng','Longitude'],['serviceType','Service Type'],['circuitId','Circuit / Splice ID'],['notes','Notes']];
   body.innerHTML = `<div class="howHtml"><p>Rename any field label used in the Add Location form and location details. Changes apply immediately.</p></div>` +
     map.map(([key])=>`<div class="labelRow"><span>${key}</span><input data-key="${key}" value="${escAttr(fieldLabels[key])}"/></div>`).join('');
   body.querySelectorAll('.labelRow input').forEach(inp=>{
@@ -1237,9 +1244,9 @@ document.getElementById('search').addEventListener('input', renderList);
 /* ---------- CSV TEMPLATE + IMPORT (called from Settings > Data) ---------- */
 function downloadCsvTemplate(){
   const headers = ['type','label','ring','city','carrier','data_center','point_to_point','area_pm','lat','lng','fiber_count','active_ports','notes',
-    'backbone','backbone_gps','metro','metro_gps','lateral','lateral_gps','service_type'];
+    'backbone','backbone_gps','metro','metro_gps','lateral','lateral_gps','service_type','circuit_id'];
   const example = ['cab','EXAMPLE-CAB-01','Example Ring · Seg 1','City, ST','Carrier Name','Data Center Name','Site A -> Site B 10km','PM Name','0.0000','0.0000','24','1|2|7|8','Example row - delete before mass upload',
-    'Example Backbone','0.0000,0.0000','Example Metro','0.0000,0.0000','Example Lateral','0.0000,0.0000','Lit'];
+    'Example Backbone','0.0000,0.0000','Example Metro','0.0000,0.0000','Example Lateral','0.0000,0.0000','Lit','CKT-0001'];
   const csv = headers.join(',') + '\n' + example.join(',') + '\n';
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
@@ -1273,6 +1280,7 @@ function handleCsvImport(e){
           metro: norm.metro || '', metroGps: norm.metro_gps || '',
           lateral: norm.lateral || '', lateralGps: norm.lateral_gps || '',
           serviceType: norm.service_type || '',
+          circuitId: norm.circuit_id || '',
           custom: {},
           updatedAt: Date.now()
         };
@@ -1310,7 +1318,7 @@ function findLocalMatch(incoming, pool){
 function diffFields(mine, incoming){
   const fields = [['ring','Ring/Seg'],['city','City'],['carrier','Carrier'],['dataCenter','Data Center'],
     ['p2p','Point to Point'],['pm','Area PM'],['lat','Latitude'],['lng','Longitude'],['fiberCount','Fiber Count'],['notes','Notes'],
-    ['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],['backboneGps','Backbone GPS'],['metroGps','Metro GPS'],['lateralGps','Lateral GPS'],['serviceType','Service Type']];
+    ['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],['backboneGps','Backbone GPS'],['metroGps','Metro GPS'],['lateralGps','Lateral GPS'],['serviceType','Service Type'],['circuitId','Circuit / Splice ID']];
   const diffs = [];
   fields.forEach(([k,label])=>{ if(String(mine[k]||'') !== String(incoming[k]||'')) diffs.push(label); });
   const customKeys = new Set([...Object.keys(mine.custom||{}), ...Object.keys(incoming.custom||{})]);
