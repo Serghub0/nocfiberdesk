@@ -14,6 +14,14 @@
     --sans:'Inter',-apple-system,Segoe UI,sans-serif;
     --row-accent:#3f9ee5; --occupied:#2fbf7a; --empty:#232937; --danger:#e5544f; --warn:#e0a92f;
   }
+  body.light-theme{
+    --bg:#f4f5f7; --panel:#ffffff; --panel2:#eef0f3; --line:#dde1e7;
+    --text:#1a1f2b; --muted:#5b6472;
+    --row-accent:#1d6fd6; --occupied:#1f9d5c; --empty:#e5e8ec; --danger:#c8332e; --warn:#a5700a;
+  }
+  body.light-theme #logoBox{ background:var(--panel2); }
+  body.light-theme .port.on{ background:rgba(31,157,92,.12); }
+  body.light-theme .type-pill, body.light-theme .verifyBadge, body.light-theme .logEntry .badge{ filter:none; }
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
   *{box-sizing:border-box; margin:0; padding:0;}
   body{background:var(--bg); color:var(--text); font-family:var(--sans); height:100vh; overflow:hidden;}
@@ -130,6 +138,7 @@
       <button id="tabTable">Table</button>
     </div>
     <button class="btn" id="settingsBtn">⚙ Settings</button>
+    <button class="btn" id="themeToggleBtn" title="Switch between dark and light mode">☀ Light</button>
     <button class="btn primary" id="btnAdd">+ Add Location</button>
   </div>
 
@@ -612,9 +621,28 @@ function renderAddFormCustomFields(){
   }).join('');
 }
 
+/* ---------- THEME TOGGLE (dark is default) ---------- */
+function applyTheme(isLight){
+  document.body.classList.toggle('light-theme', isLight);
+  const btn = document.getElementById('themeToggleBtn');
+  btn.textContent = isLight ? '🌙 Dark' : '☀ Light';
+  map.removeLayer(tileLayer);
+  tileLayer = L.tileLayer(isLight ? TILE_URLS.light : TILE_URLS.dark, {attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19}).addTo(map);
+}
+document.getElementById('themeToggleBtn').onclick = ()=>{
+  const isLight = !document.body.classList.contains('light-theme');
+  applyTheme(isLight);
+  lsSet('fiber-theme', isLight ? 'light' : 'dark');
+};
+
 /* ---------- MAP ---------- */
 const map = L.map('map', {zoomControl:true}).setView([27.8, -81.5], 7);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19}).addTo(map);
+const TILE_URLS = {
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+};
+let tileLayer = L.tileLayer(TILE_URLS.dark, {attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19}).addTo(map);
+if(lsGet('fiber-theme', 'dark') === 'light') applyTheme(true);
 let markers = {};
 
 function catByKey(key){ return categories.find(c=>c.key===key) || {label:key, color:'#888'}; }
