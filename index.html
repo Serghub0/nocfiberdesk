@@ -56,6 +56,8 @@
   .dot{width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0;}
   .item-main .label{font-family:var(--mono); font-size:12.5px; font-weight:600;}
   .item-main .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  .rowCopyBtn{background:none; border:1px solid transparent; color:var(--muted); font-size:13px; cursor:pointer; border-radius:4px; padding:2px 5px; flex-shrink:0; margin-left:auto;}
+  .rowCopyBtn:hover{color:var(--row-accent); border-color:var(--line); background:var(--panel2);}
 
   #main{position:relative; overflow:hidden;}
   #map{width:100%; height:100%;}
@@ -160,12 +162,12 @@
       </div>
       <div class="section" id="dInfoSection"></div>
       <div class="section">
-        <h4 id="dPortsHeader">Ports</h4>
-        <div id="dPorts"></div>
-      </div>
-      <div class="section">
         <h4>Notes</h4>
         <div class="notes" id="dNotes">—</div>
+      </div>
+      <div class="section">
+        <h4 id="dPortsHeader">Ports</h4>
+        <div id="dPorts"></div>
       </div>
     </div>
   </div>
@@ -439,7 +441,8 @@ async function loadData(){
   records = lsGet('fiber-records', null) || seedRecords();
   categories = lsGet('fiber-categories', null) || categories;
   activityLog = lsGet('fiber-activity-log', []);
-  fieldLabels = lsGet('fiber-field-labels', null) || fieldLabels;
+  const savedLabels = lsGet('fiber-field-labels', null);
+  if(savedLabels) fieldLabels = Object.assign({}, fieldLabels, savedLabels);
   customFields = lsGet('fiber-custom-fields', []);
   fieldOptions = lsGet('fiber-field-options', null) || fieldOptions;
   const title = lsGet('fiber-brand-title', null);
@@ -597,13 +600,13 @@ function renderAddFormCustomFields(){
   wrap.innerHTML = customFields.map(f=>{
     if(f.type==='gps'){
       return `<div class="field">
-        <label>${f.label}</label>
+        <label>${f.label || 'Field'}</label>
         <input data-cf="${f.key}"/>
         <input data-cf-gps="${f.key}" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
       </div>`;
     }
     return `<div class="field">
-      <label>${f.label}</label>
+      <label>${f.label || 'Field'}</label>
       ${f.type==='textarea' ? `<textarea data-cf="${f.key}"></textarea>` : `<input data-cf="${f.key}"/>`}
     </div>`;
   }).join('');
@@ -619,7 +622,7 @@ function catByKey(key){ return categories.find(c=>c.key===key) || {label:key, co
 function renderMarkers(list){
   Object.values(markers).forEach(m=>map.removeLayer(m));
   markers = {};
-  list.forEach(rec=>{
+  list.filter(rec=> !(rec.lat===0 && rec.lng===0)).forEach(rec=>{
     const color = catByKey(rec.type).color;
     const marker = L.circleMarker([rec.lat, rec.lng], {radius:7, color, fillColor:color, fillOpacity:.85, weight:2}).addTo(map);
     marker.bindTooltip(rec.label, {direction:'top', offset:[0,-6]});
@@ -649,7 +652,7 @@ function renderFilterChips(){
 function filtered(){
   const qRaw = document.getElementById('search').value.trim().toLowerCase();
   const terms = qRaw.split(/[,;*]+/).map(t=>t.trim().replace(/\s+/g,' ')).filter(Boolean);
-  return records.filter(r=>{
+  const results = records.filter(r=>{
     if(r.deleted) return false;
     if(selectedType!=='all' && r.type!==selectedType) return false;
     if(!terms.length) return true;
@@ -666,13 +669,20 @@ function filtered(){
       return hay.includes(q) || hayNoSpace.includes(qNoSpace) || portNumMatch;
     });
   });
+  // Group same-ring sites together (spreadsheet-style clustering) instead of raw insertion order
+  return results.sort((a,b)=>{
+    const ringA = (a.ring||'').toLowerCase(), ringB = (b.ring||'').toLowerCase();
+    if(ringA !== ringB) return ringA.localeCompare(ringB);
+    return (a.label||'').localeCompare(b.label||'');
+  });
 }
 
 function activePortCount(r){ return (r.ports||[]).filter(p=>p.on).length; }
 
 function renderList(){
   const list = filtered();
-  document.getElementById('countLine').textContent = list.length + ' record' + (list.length!==1?'s':'');
+  document.getElementById('countLine').textContent = `${list.length} record${list.length!==1?'s':''}`;
+
   const listEl = document.getElementById('list');
   listEl.innerHTML = list.map(r=>{
     const cat = catByKey(r.type);
@@ -682,6 +692,7 @@ function renderList(){
         <div class="label">${r.label}</div>
         <div class="sub">${r.ring||''} ${r.city?'· '+r.city:''}</div>
       </div>
+      <button class="rowCopyBtn" title="Copy site name" onclick="event.stopPropagation(); copyToClipboard('${escAttr(r.label)}', this);">⧉</button>
     </div>`;
   }).join('') || '<div style="padding:20px;color:var(--muted);font-size:12px;">No matches.</div>';
 
@@ -690,10 +701,12 @@ function renderList(){
     const cat = catByKey(r.type);
     return `<tr onclick="openDrawer('${r.id}')">
       <td><span class="type-pill" style="background:${cat.color}22;color:${cat.color}">${cat.label}</span></td>
-      <td>${r.label}</td><td>${r.ring||''}</td><td>${r.city||''}</td>
+      <td>${r.label} <button class="rowCopyBtn" title="Copy site name" onclick="event.stopPropagation(); copyToClipboard('${escAttr(r.label)}', this);">⧉</button></td>
+      <td>${r.ring||''} ${r.ring?`<button class="rowCopyBtn" title="Copy ring/segment" onclick="event.stopPropagation(); copyToClipboard('${escAttr(r.ring)}', this);">⧉</button>`:''}</td>
+      <td>${r.city||''}</td>
       <td>${r.carrier||''}</td><td>${r.dataCenter||''}</td><td>${r.p2p||''}</td><td>${r.pm||''}</td>
       <td>${activePortCount(r)}/${r.fiberCount}</td>
-      <td>${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</td>
+      <td>${(r.lat===0 && r.lng===0) ? 'No GPS yet' : `${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}`}</td>
     </tr>`;
   }).join('');
 
@@ -755,34 +768,33 @@ function renderDrawer(){
         if(f.type === 'gps'){
           const val = (v && typeof v === 'object') ? (v.value||'') : (typeof v === 'string' ? v : '');
           const gps = (v && typeof v === 'object') ? (v.gps||'') : '';
-          return `<div class="kv"><div class="k">${f.label}</div><input data-cf="${f.key}" value="${escAttr(val)}"/></div>
-                  <div class="kv"><div class="k">${f.label} GPS</div><input data-cf-gps="${f.key}" value="${escAttr(gps)}" placeholder="lat, lng"/></div>`;
+          return `<div class="kv"><div class="k">${f.label || 'Field'}</div><input data-cf="${f.key}" value="${escAttr(val)}"/></div>
+                  <div class="kv"><div class="k">${f.label || 'Field'} GPS</div><input data-cf-gps="${f.key}" value="${escAttr(gps)}" placeholder="lat, lng"/></div>`;
         }
-        return `<div class="kv"><div class="k">${f.label}</div>${f.type==='textarea'?`<textarea data-cf="${f.key}">${escHtml(v||'')}</textarea>`:`<input data-cf="${f.key}" value="${escAttr(v||'')}"/>`}</div>`;
+        return `<div class="kv"><div class="k">${f.label || 'Field'}</div>${f.type==='textarea'?`<textarea data-cf="${f.key}">${escHtml(v||'')}</textarea>`:`<input data-cf="${f.key}" value="${escAttr(v||'')}"/>`}</div>`;
       }).join('')}
     `;
   } else {
     infoSection.innerHTML = `
       <h4>Site Info</h4>
-      <div class="coord" style="margin-bottom:8px;"><span>${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}</span><button onclick="copyCoord('${r.lat},${r.lng}')">Copy</button></div>
+      <div class="coord" style="margin-bottom:8px;"><span>${(r.lat===0 && r.lng===0) ? 'No GPS yet — edit to add' : `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}`}</span><button onclick="copyCoord('${r.lat},${r.lng}')">Copy</button></div>
       <div class="conn-list">
-        ${r.carrier?`${fieldLabels.carrier}: <b>${r.carrier}</b><br>`:''}
-        ${r.dataCenter?`${fieldLabels.dataCenter}: <b>${r.dataCenter}</b><br>`:''}
-        ${r.p2p?`${fieldLabels.p2p}: <b>${r.p2p}</b><br>`:''}
-        ${r.pm?`${fieldLabels.pm}: <b>${r.pm}</b><br>`:''}
-        ${r.backbone?`${fieldLabels.backbone}: <b>${r.backbone}</b>${r.backboneGps?' ('+r.backboneGps+')':''}<br>`:''}
-        ${r.metro?`${fieldLabels.metro}: <b>${r.metro}</b>${r.metroGps?' ('+r.metroGps+')':''}<br>`:''}
-        ${r.lateral?`${fieldLabels.lateral}: <b>${r.lateral}</b>${r.lateralGps?' ('+r.lateralGps+')':''}<br>`:''}
-        ${r.serviceType?`${fieldLabels.serviceType}: <b>${r.serviceType}</b><br>`:''}
-        ${r.circuitId?`${fieldLabels.circuitId}: <b>${r.circuitId}</b><br>`:''}
+        ${fieldLabels.ring}: <b>${r.ring || '—'}</b>${r.ring?` <button class="rowCopyBtn" title="Copy ring/segment" onclick="copyToClipboard('${escAttr(r.ring)}', this);">⧉</button>`:''}<br>
+        ${fieldLabels.city}: <b>${r.city || '—'}</b><br>
+        ${fieldLabels.carrier}: <b>${r.carrier || '—'}</b><br>
+        ${fieldLabels.dataCenter}: <b>${r.dataCenter || '—'}</b><br>
+        ${fieldLabels.p2p}: <b>${r.p2p || '—'}</b><br>
+        ${fieldLabels.pm}: <b>${r.pm || '—'}</b><br>
+        ${fieldLabels.backbone}: <b>${r.backbone || '—'}</b>${r.backboneGps?' ('+r.backboneGps+')':''}<br>
+        ${fieldLabels.metro}: <b>${r.metro || '—'}</b>${r.metroGps?' ('+r.metroGps+')':''}<br>
+        ${fieldLabels.lateral}: <b>${r.lateral || '—'}</b>${r.lateralGps?' ('+r.lateralGps+')':''}<br>
+        ${fieldLabels.serviceType}: <b>${r.serviceType || '—'}</b><br>
+        ${fieldLabels.circuitId}: <b>${r.circuitId || '—'}</b><br>
         ${fieldLabels.fiberCount}: <b>${r.fiberCount}</b>
-        ${customFields.filter(f=>{
+        ${customFields.map(f=>{
           const v = r.custom && r.custom[f.key];
-          return v && (typeof v === 'object' ? v.value : v);
-        }).map(f=>{
-          const v = r.custom[f.key];
-          const text = (typeof v === 'object') ? `${v.value}${v.gps?' ('+v.gps+')':''}` : v;
-          return `<br>${f.label}: <b>${text}</b>`;
+          const text = (v && typeof v === 'object') ? `${v.value||'—'}${v.gps?' ('+v.gps+')':''}` : (v || '—');
+          return `<br>${f.label || 'Field'}: <b>${text}</b>`;
         }).join('')}
       </div>
     `;
@@ -902,6 +914,14 @@ async function restoreRecord(id){
 
 function copyCoord(t){
   navigator.clipboard.writeText(t).catch(()=>{});
+}
+function copyToClipboard(text, btnEl){
+  navigator.clipboard.writeText(text).catch(()=>{});
+  if(btnEl){
+    const old = btnEl.textContent;
+    btnEl.textContent = '✓';
+    setTimeout(()=>{ btnEl.textContent = old; }, 900);
+  }
 }
 
 /* ---------- PORT EDIT MODAL ---------- */
@@ -1197,6 +1217,11 @@ function renderDataTab(body){
       <input type="file" id="csvFile2" accept=".csv" style="display:none;"/>
     </div>
     <div id="importVerifyResult"></div>
+    <div class="howHtml" style="margin-top:22px; border-top:1px solid var(--line); padding-top:16px;">
+      <h5 style="color:var(--danger);">Danger Zone</h5>
+      <p>Wipes every site, category, custom field, dropdown option, activity log entry, and setting on this browser — no undo, and export first if you want a backup. Use this to start completely fresh.</p>
+    </div>
+    <button class="btn danger" id="factoryResetBtn" style="margin-top:10px;">Restore to Default (Erase Everything)</button>
   `;
   document.getElementById('dataExportBtn').onclick = openExportModal;
   document.getElementById('dataTemplateBtn').onclick = downloadCsvTemplate;
@@ -1204,6 +1229,17 @@ function renderDataTab(body){
   document.getElementById('jsonFile').addEventListener('change', handleJsonImport);
   document.getElementById('dataCsvImportBtn').onclick = ()=>document.getElementById('csvFile2').click();
   document.getElementById('csvFile2').addEventListener('change', handleCsvImport);
+  document.getElementById('factoryResetBtn').onclick = factoryReset;
+}
+
+function factoryReset(){
+  if(!confirm('This will permanently erase every site, category, custom field, dropdown option, and activity log entry saved in this browser. This cannot be undone. Continue?')) return;
+  const typed = prompt('Type DELETE to confirm you want to erase everything and start fresh:');
+  if(typed !== 'DELETE'){ alert('Reset cancelled — nothing was changed.'); return; }
+  ['fiber-records','fiber-categories','fiber-activity-log','fiber-field-labels','fiber-custom-fields',
+   'fiber-field-options','fiber-brand-title','fiber-logo'].forEach(k=>localStorage.removeItem(k));
+  alert('Everything has been erased. The page will now reload with a clean start.');
+  location.reload();
 }
 
 function renderLabelsTab(body){
@@ -1284,7 +1320,7 @@ function handleCsvImport(e){
           custom: {},
           updatedAt: Date.now()
         };
-      }).filter(r=>r.lat && r.lng);
+      }); // no longer drops rows missing GPS — sites can be added first, coordinates filled in later
       records = records.concat(imported);
       imported.forEach(r=>{
         registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
@@ -1311,7 +1347,7 @@ function findLocalMatch(incoming, pool){
   let match = pool.find(r=>!r.deleted && r.label.trim().toLowerCase() === (incoming.label||'').trim().toLowerCase());
   if(match) return match;
   if(incoming.lat && incoming.lng){
-    match = pool.find(r=>!r.deleted && haversineKm(r.lat,r.lng,incoming.lat,incoming.lng) < 0.05);
+    match = pool.find(r=>!r.deleted && r.lat && r.lng && haversineKm(r.lat,r.lng,incoming.lat,incoming.lng) < 0.05);
   }
   return match || null;
 }
