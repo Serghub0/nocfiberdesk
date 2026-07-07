@@ -93,10 +93,16 @@
   .cassette-label{font-size:10px; color:var(--muted); font-family:var(--mono); margin:8px 0 4px;}
   .portgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px;}
   .port{background:var(--empty); border-radius:5px; padding:6px 4px; text-align:center; font-family:var(--mono); font-size:10.5px; position:relative;}
-  .port.on{background:rgba(47,191,122,.18); color:var(--occupied); border:1px solid rgba(47,191,122,.4);}
+  .port.live{background:rgba(47,191,122,.18); border:1px solid rgba(47,191,122,.4);}
+  .port.assigned{background:rgba(224,169,47,.18); border:1px solid rgba(224,169,47,.4);}
   .port.editable{cursor:pointer;}
   .port.editable:hover{outline:1px solid var(--row-accent);}
   .port .n{font-size:9px; color:var(--muted); display:block;}
+  .port .dotChar{font-size:10.5px; color:var(--muted);}
+  .port.live .dotChar{font-size:21px; line-height:1; color:var(--occupied);}
+  .port.assigned .dotChar{font-size:21px; line-height:1; color:var(--warn);}
+  .liveToggle{display:flex; align-items:center; gap:8px; border:1px solid var(--occupied); color:var(--occupied); border-radius:6px; padding:9px 12px; cursor:pointer; font-size:13px; font-weight:600; width:fit-content;}
+  .liveToggle input{accent-color:var(--occupied); width:15px; height:15px; cursor:pointer;}
   .port.on .n{color:var(--occupied);}
   .notes{font-size:12px; line-height:1.5; color:var(--muted);}
   .conn-list{font-size:11.5px; color:var(--muted); line-height:1.6;}
@@ -176,6 +182,10 @@
       </div>
       <div class="section">
         <h4 id="dPortsHeader">Ports</h4>
+        <div style="font-size:10.5px; color:var(--muted); margin-bottom:10px; display:flex; gap:14px; align-items:center;">
+          <span><span style="color:var(--occupied); font-size:15px;">●</span> Live circuit</span>
+          <span><span style="color:var(--warn); font-size:15px;">●</span> Assigned, not live</span>
+        </div>
         <div id="dPorts"></div>
       </div>
     </div>
@@ -284,6 +294,10 @@
       </div>
       <div class="field"><label>Connects To</label><input id="pConn" placeholder="e.g. Cabinet 3 · Port 5"/></div>
       <div class="field"><label>Distance</label><input id="pDist" placeholder="e.g. 18.4 km"/></div>
+      <label class="liveToggle" id="pLiveWrap">
+        <input type="checkbox" id="pLive"/>
+        <span>Live Circuit</span>
+      </label>
     </div>
     <div class="mfoot">
       <button class="btn" onclick="closePortModal()">Cancel</button>
@@ -833,9 +847,10 @@ function renderDrawer(){
   let html = '';
   for(let i=0;i<r.fiberCount;i++){
     if(i%12===0) html += `<div class="cassette-label">Cassette ${(i/12)+1} · Ports ${i+1}–${Math.min(i+12,r.fiberCount)}</div><div class="portgrid">`;
-    const p = r.ports[i] || {on:false, conn:'', dist:''};
-    html += `<div class="port ${p.on?'on':''} editable" data-idx="${i}" title="${p.conn?p.conn:''}">
-      <span class="n">P${i+1}</span>${p.on?'●':'—'}
+    const p = r.ports[i] || {on:false, conn:'', dist:'', live:false};
+    const stateClass = p.on ? (p.live ? 'live' : 'assigned') : '';
+    html += `<div class="port ${stateClass} editable" data-idx="${i}" title="${p.conn?p.conn:''}${p.on ? (p.live?' (Live circuit)':' (Assigned, not live)') : ''}">
+      <span class="n">P${i+1}</span><span class="dotChar">${p.on?'●':'—'}</span>
     </div>`;
     if(i%12===11 || i===r.fiberCount-1) html += `</div>`;
   }
@@ -956,21 +971,27 @@ function copyToClipboard(text, btnEl){
 function openPortModal(recordId, idx){
   activePortEdit = {recordId, idx};
   const r = records.find(x=>x.id===recordId);
-  const p = r.ports[idx] || {on:false, conn:'', dist:''};
+  const p = r.ports[idx] || {on:false, conn:'', dist:'', live:false};
   document.getElementById('portModalTitle').textContent = `${r.label} — Port ${idx+1}`;
   document.getElementById('pStatus').value = p.on ? 'on' : 'off';
   document.getElementById('pConn').value = p.conn || '';
   document.getElementById('pDist').value = p.dist || '';
+  document.getElementById('pLive').checked = !!p.live;
+  document.getElementById('pLiveWrap').style.display = p.on ? 'flex' : 'none';
   document.getElementById('portModal').classList.add('open');
 }
+document.getElementById('pStatus').addEventListener('change', function(){
+  document.getElementById('pLiveWrap').style.display = this.value === 'on' ? 'flex' : 'none';
+});
 function closePortModal(){ document.getElementById('portModal').classList.remove('open'); activePortEdit = null; }
 document.getElementById('pSaveBtn').onclick = async ()=>{
   if(!activePortEdit) return;
   const r = records.find(x=>x.id===activePortEdit.recordId);
   const on = document.getElementById('pStatus').value === 'on';
-  r.ports[activePortEdit.idx] = {on, conn:document.getElementById('pConn').value, dist:document.getElementById('pDist').value};
+  const live = on && document.getElementById('pLive').checked;
+  r.ports[activePortEdit.idx] = {on, conn:document.getElementById('pConn').value, dist:document.getElementById('pDist').value, live};
   r.updatedAt = Date.now();
-  logEvent('port', r.label, `Port ${activePortEdit.idx+1} set to ${on?'On':'Off'}${document.getElementById('pConn').value ? ' → '+document.getElementById('pConn').value : ''}`);
+  logEvent('port', r.label, `Port ${activePortEdit.idx+1} set to ${on ? (live ? 'On / Live circuit' : 'On / Assigned, not live') : 'Off'}${document.getElementById('pConn').value ? ' → '+document.getElementById('pConn').value : ''}`);
   await saveRecords();
   closePortModal();
   renderDrawer(); renderList();
@@ -1237,7 +1258,7 @@ function renderDataTab(body){
     </div>
     <div class="howHtml">
       <h5>Mass upload from a spreadsheet</h5>
-      <p>Download the CSV template, fill it in Excel or Google Sheets, then import it back. Columns: type, label, ring, city, carrier, data_center, point_to_point, area_pm, lat, lng, fiber_count, active_ports, notes.</p>
+      <p>Download the CSV template, fill it in Excel or Google Sheets, then import it back. The columns always mirror exactly what's in the Add Location form — including any custom fields you've added — so downloading a fresh template after adding a new field will always include it automatically.</p>
     </div>
     <div class="dataTabBtns">
       <button class="btn" id="dataTemplateBtn">CSV Template</button>
@@ -1306,13 +1327,55 @@ document.getElementById('tabTable').onclick = ()=>{
 document.getElementById('search').addEventListener('input', renderList);
 
 /* ---------- CSV TEMPLATE + IMPORT (called from Settings > Data) ---------- */
+/* Single source of truth for CSV columns — used by both the template
+   generator and the importer, so custom fields you add later automatically
+   flow into both without needing to update this in two places. */
+function customFieldSlug(f){
+  const base = (f.label || f.key || 'field').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return 'cf_' + (base || 'field');
+}
+function csvColumns(){
+  // [csvHeader, exampleValue] in the same order as the Add Location form
+  const cols = [
+    ['type', 'cab'],
+    ['label', 'EXAMPLE-CAB-01'],
+    ['fiber_count', '24'],
+    ['ring', 'Example Ring - Seg 1'],
+    ['city', 'City, ST'],
+    ['backbone', 'Example Backbone'],
+    ['backbone_gps', '0.0000,0.0000'],
+    ['metro', 'Example Metro'],
+    ['metro_gps', '0.0000,0.0000'],
+    ['lateral', 'Example Lateral'],
+    ['lateral_gps', '0.0000,0.0000'],
+    ['carrier', 'Carrier Name'],
+    ['data_center', 'Data Center Name'],
+    ['point_to_point', 'Site A -> Site B 10km'],
+    ['area_pm', 'PM Name'],
+    ['lat', '0.0000'],
+    ['lng', '0.0000'],
+    ['service_type', 'Lit'],
+    ['circuit_id', 'CKT-0001'],
+    ['active_ports', '1|2|7|8'],
+    ['notes', 'Example row - delete before mass upload']
+  ];
+  customFields.forEach(f=>{
+    const slug = customFieldSlug(f);
+    if(f.type === 'gps'){
+      cols.push([slug, 'Example value']);
+      cols.push([slug + '_gps', '0.0000,0.0000']);
+    } else {
+      cols.push([slug, f.type === 'textarea' ? 'Example long text' : 'Example value']);
+    }
+  });
+  return cols;
+}
 function downloadCsvTemplate(){
-  const headers = ['type','label','ring','city','carrier','data_center','point_to_point','area_pm','lat','lng','fiber_count','active_ports','notes',
-    'backbone','backbone_gps','metro','metro_gps','lateral','lateral_gps','service_type','circuit_id'];
-  const example = ['cab','EXAMPLE-CAB-01','Example Ring · Seg 1','City, ST','Carrier Name','Data Center Name','Site A -> Site B 10km','PM Name','0.0000','0.0000','24','1|2|7|8','Example row - delete before mass upload',
-    'Example Backbone','0.0000,0.0000','Example Metro','0.0000,0.0000','Example Lateral','0.0000,0.0000','Lit','CKT-0001'];
-  const csv = headers.join(',') + '\n' + example.join(',') + '\n';
-  const blob = new Blob([csv], {type:'text/csv'});
+  const cols = csvColumns();
+  const headers = cols.map(c=>c[0]);
+  const example = cols.map(c=>c[1]);
+  const csv = headers.join(',') + '\n' + example.map(v=> v.includes(',') ? `"${v}"` : v).join(',') + '\n';
+  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'}); // BOM keeps Excel from mangling characters
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'fiber-network-template.csv'; a.click();
 }
@@ -1325,10 +1388,19 @@ function handleCsvImport(e){
     complete: async function(results){
       const rows = results.data;
       const validKeys = categories.map(c=>c.key);
+      const customColMap = customFields.map(f=>({field:f, slug:customFieldSlug(f)}));
       const imported = rows.map((row,i)=>{
         const norm = {}; Object.keys(row).forEach(k=>norm[k.trim().toLowerCase()] = row[k]);
         const fiberCount = parseInt(norm.fiber_count) || 24;
         const activeSet = new Set((norm.active_ports||'').split(/[|,]/).map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)));
+        const custom = {};
+        customColMap.forEach(({field,slug})=>{
+          if(field.type === 'gps'){
+            custom[field.key] = {value: norm[slug] || '', gps: norm[slug + '_gps'] || ''};
+          } else if(norm[slug] !== undefined){
+            custom[field.key] = norm[slug];
+          }
+        });
         return {
           id:'imp'+i+'_'+Date.now(),
           type: validKeys.includes((norm.type||'').toLowerCase()) ? norm.type.toLowerCase() : (categories[0]?.key || 'cab'),
@@ -1345,7 +1417,7 @@ function handleCsvImport(e){
           lateral: norm.lateral || '', lateralGps: norm.lateral_gps || '',
           serviceType: norm.service_type || '',
           circuitId: norm.circuit_id || '',
-          custom: {},
+          custom,
           updatedAt: Date.now()
         };
       }); // no longer drops rows missing GPS — sites can be added first, coordinates filled in later
