@@ -274,6 +274,20 @@
       </div>
       <div class="row2">
         <div class="field">
+          <div class="row2">
+            <input id="fALocationLat" placeholder="e.g. 27.9506"/>
+            <input id="fALocationLng" placeholder="e.g. -82.4572"/>
+          </div>
+        </div>
+        <div class="field">
+          <div class="row2">
+            <input id="fDataCenterLat" placeholder="e.g. 27.9506"/>
+            <input id="fDataCenterLng" placeholder="e.g. -82.4572"/>
+          </div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
           <label id="lblRing" class="renameableLabel" onclick="renameFieldLabel('ring')" title="Click to rename">Ring / Segment</label>
           <input id="fRing" list="ringOptions" placeholder="Type or pick existing…" autocomplete="off"/>
           <datalist id="ringOptions"></datalist>
@@ -281,8 +295,8 @@
         <div class="field"><label id="lblCity" class="renameableLabel" onclick="renameFieldLabel('city')" title="Click to rename">City / Location</label><input id="fCity" placeholder="e.g. City, ST"/></div>
       </div>
       <div class="row2">
-        <div class="field"><label id="lblLat" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fLat" placeholder="27.9506"/></div>
-        <div class="field"><label id="lblLng" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fLng" placeholder="-82.4572"/></div>
+        <div class="field"><label id="lblLat" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fLat" placeholder="e.g. 27.9506"/></div>
+        <div class="field"><label id="lblLng" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fLng" placeholder="e.g. -82.4572"/></div>
       </div>
 
       <div class="hierarchyBlock">
@@ -295,8 +309,8 @@
         </div>
         <div class="row3">
           <div class="field"><label id="lblDistance1" class="renameableLabel" onclick="renameFieldLabel('distanceLabel')" title="Click to rename">Distance (km)</label><input id="fBackboneDistance" placeholder="e.g. 18.4"/></div>
-          <div class="field"><label id="lblGpsLat1" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fBackboneLat" placeholder="27.9506"/></div>
-          <div class="field"><label id="lblGpsLng1" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fBackboneLng" placeholder="-82.4572"/></div>
+          <div class="field"><label id="lblGpsLat1" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fBackboneLat" placeholder="e.g. 27.9506"/></div>
+          <div class="field"><label id="lblGpsLng1" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fBackboneLng" placeholder="e.g. -82.4572"/></div>
         </div>
       </div>
 
@@ -310,8 +324,8 @@
         </div>
         <div class="row3">
           <div class="field"><label id="lblDistance2" class="renameableLabel" onclick="renameFieldLabel('distanceLabel')" title="Click to rename">Distance (km)</label><input id="fMetroDistance" placeholder="e.g. 18.4"/></div>
-          <div class="field"><label id="lblGpsLat2" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fMetroLat" placeholder="27.9506"/></div>
-          <div class="field"><label id="lblGpsLng2" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fMetroLng" placeholder="-82.4572"/></div>
+          <div class="field"><label id="lblGpsLat2" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fMetroLat" placeholder="e.g. 27.9506"/></div>
+          <div class="field"><label id="lblGpsLng2" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fMetroLng" placeholder="e.g. -82.4572"/></div>
         </div>
       </div>
 
@@ -656,6 +670,10 @@ function parseGpsPair(str){
    without discarding anything already entered. */
 function normalizeRecord(r){
   if(r.aLocation === undefined) r.aLocation = '';
+  if(r.aLocationLat === undefined) r.aLocationLat = '';
+  if(r.aLocationLng === undefined) r.aLocationLng = '';
+  if(r.dataCenterLat === undefined) r.dataCenterLat = '';
+  if(r.dataCenterLng === undefined) r.dataCenterLng = '';
   if(r.p2pA === undefined && r.p2pB === undefined){
     if(r.p2p){
       const parts = String(r.p2p).split(/→|->/);
@@ -720,8 +738,8 @@ function buildLateralEntryHtml(idx, entry){
     </div>
     <div class="row3">
       <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('distanceLabel')" title="Click to rename">${fieldLabels.distanceLabel}</label><input class="latDistance" value="${escAttr(entry.distance||'')}" placeholder="e.g. 12.4"/></div>
-      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">${fieldLabels.lat}</label><input class="latLat" value="${escAttr(entry.lat||'')}" placeholder="27.9506"/></div>
-      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">${fieldLabels.lng}</label><input class="latLng" value="${escAttr(entry.lng||'')}" placeholder="-82.4572"/></div>
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">${fieldLabels.lat}</label><input class="latLat" value="${escAttr(entry.lat||'')}" placeholder="e.g. 27.9506"/></div>
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">${fieldLabels.lng}</label><input class="latLng" value="${escAttr(entry.lng||'')}" placeholder="e.g. -82.4572"/></div>
     </div>
   </div>`;
 }
@@ -913,6 +931,17 @@ let tileLayer = L.tileLayer(TILE_URLS.dark, {attribution:'&copy; OpenStreetMap &
 if(lsGet('fiber-theme', 'dark') === 'light') applyTheme(true);
 let markers = {};
 
+/* Site names show automatically once zoomed in close, without needing to click or hover —
+   at wider zoom levels they stay hover-only so the map doesn't get cluttered with text.
+   Applies to both the main site markers and the Backbone/Metro/Lateral/A-Z Location points. */
+const ZOOM_LABEL_THRESHOLD = 11;
+function updateLabelVisibility(){
+  const show = map.getZoom() >= ZOOM_LABEL_THRESHOLD;
+  Object.values(markers).forEach(m=> show ? m.openTooltip() : m.closeTooltip());
+  hierarchyMarkers.forEach(m=> show ? m.openTooltip() : m.closeTooltip());
+}
+map.on('zoomend', updateLabelVisibility);
+
 function catByKey(key){ return categories.find(c=>c.key===key) || {label:key, color:'#888'}; }
 const LINK_TYPES = {
   backbone:{label:'Backbone', color:'#3f9ee5'},
@@ -934,6 +963,7 @@ function renderMarkers(list){
     markers[rec.id] = marker;
   });
   renderHierarchyMarkers(list);
+  updateLabelVisibility();
   renderLinkLines(list);
 }
 
@@ -959,12 +989,14 @@ function renderHierarchyMarkers(list){
     // Connect back to the parent site whenever the site itself has real GPS — unconditional,
     // no separate Map Link needs to be created for this to show.
     if(!(rec.lat===0 && rec.lng===0)){
-      const line = L.polyline([[rec.lat,rec.lng],[la,ln]], {color, weight:1.5, opacity:.6, dashArray:'3,5'}).addTo(map);
+      const line = L.polyline([[rec.lat,rec.lng],[la,ln]], {color, weight:1.5, opacity:.6}).addTo(map);
       line.bindTooltip(`${rec.label} → ${kindLabel}: ${name||'(unnamed)'}`, {sticky:true});
       hierarchyLines.push(line);
     }
   };
   list.forEach(rec=>{
+    addPoint(rec, rec.aLocationLat, rec.aLocationLng, rec.aLocation, fieldLabels.aLocation, '#e05f9e');
+    addPoint(rec, rec.dataCenterLat, rec.dataCenterLng, rec.dataCenter, fieldLabels.dataCenter, '#2ec4c0');
     addPoint(rec, rec.backboneLat, rec.backboneLng, rec.backbone, fieldLabels.backbone, linkTypeInfo('backbone').color);
     addPoint(rec, rec.metroLat, rec.metroLng, rec.metro, fieldLabels.metro, linkTypeInfo('metro').color);
     (rec.lateralLinks||[]).forEach(l=> addPoint(rec, l.lat, l.lng, l.name, fieldLabels.lateral, linkTypeInfo('lateral').color));
@@ -1009,7 +1041,16 @@ function renderLinkLines(list){
     if(isNaN(a.lat) || isNaN(a.lng) || isNaN(b.lat) || isNaN(b.lng)) return;
     if((a.lat===0 && a.lng===0) || (b.lat===0 && b.lng===0)) return; // needs GPS on both ends first
     const info = linkTypeInfo(link.type);
-    const line = L.polyline([[a.lat,a.lng],[b.lat,b.lng]], {color:info.color, weight:2.5, opacity:.8, dashArray: link.type==='lateral' ? '6,4' : null}).addTo(map);
+    if(a.lat===b.lat && a.lng===b.lng){
+      // Same coordinates on both ends (e.g. Backbone and Metro handed off in the same building) —
+      // a line between two identical points has zero length and would be invisible. Draw a
+      // hollow ring instead so a co-located connection still shows up on the map.
+      const ring = L.circleMarker([a.lat,a.lng], {radius:10, color:info.color, fillOpacity:0, weight:2.5}).addTo(map);
+      ring.bindTooltip(`${a.label} ↔ ${b.label} — co-located${link.length ? ' · '+link.length : ''} (${info.label})`, {sticky:true});
+      linkLines.push(ring);
+      return;
+    }
+    const line = L.polyline([[a.lat,a.lng],[b.lat,b.lng]], {color:info.color, weight:2.5, opacity:.8}).addTo(map);
     line.bindTooltip(`${a.label} ↔ ${b.label}${link.length ? ' · '+link.length : ''} (${info.label})`, {sticky:true});
     linkLines.push(line);
   });
@@ -1044,7 +1085,7 @@ function filtered(){
     const customVals = Object.values(r.custom||{}).map(v=> (v && typeof v==='object') ? `${v.value||''} ${v.gps||''}` : (v||'')).join(' ');
     const gpsVariants = [`${r.lat}, ${r.lng}`, `${r.lat},${r.lng}`, `${r.lat} ${r.lng}`];
     const lateralVals = (r.lateralLinks||[]).map(l=>[l.name,l.fiberId,l.distance,l.lat,l.lng].join(' ')).join(' ');
-    const hay = [r.label, r.aLocation, r.ring, r.city, r.carrier, r.dataCenter, r.p2pA, r.p2pB, r.pm, r.notes, portConns, customVals,
+    const hay = [r.label, r.aLocation, r.aLocationLat, r.aLocationLng, r.ring, r.city, r.carrier, r.dataCenter, r.dataCenterLat, r.dataCenterLng, r.p2pA, r.p2pB, r.pm, r.notes, portConns, customVals,
       r.backbone, r.metro, r.backboneFiberId, r.backboneDistance, r.backboneLat, r.backboneLng,
       r.metroFiberId, r.metroDistance, r.metroLat, r.metroLng, lateralVals, r.serviceType, r.circuitId,
       String(r.lat), String(r.lng), ...gpsVariants].join(' ').toLowerCase();
@@ -1133,7 +1174,11 @@ function renderDrawer(){
       <div class="kv"><div class="k">${fieldLabels.category}</div><select id="eType">${categories.map(c=>`<option value="${c.key}" ${c.key===r.type?'selected':''}>${c.label}</option>`).join('')}</select></div>
       <div class="kv"><div class="k">${fieldLabels.label}</div><input id="eLabel" value="${escAttr(r.label)}"/></div>
       <div class="kv"><div class="k">${fieldLabels.aLocation}</div><input id="eALocation" value="${escAttr(r.aLocation||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eALocationLat" value="${escAttr(r.aLocationLat||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eALocationLng" value="${escAttr(r.aLocationLng||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.dataCenter}</div><input id="eDataCenter" list="dataCenterOptions" value="${escAttr(r.dataCenter||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eDataCenterLat" value="${escAttr(r.dataCenterLat||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eDataCenterLng" value="${escAttr(r.dataCenterLng||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.ring}</div><input id="eRing" list="ringOptions" value="${escAttr(r.ring||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.city}</div><input id="eCity" value="${escAttr(r.city||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eLat" value="${r.lat}"/></div>
@@ -1183,8 +1228,8 @@ function renderDrawer(){
       <h4>Site Info</h4>
       <div class="coord" style="margin-bottom:8px;"><span>${(r.lat===0 && r.lng===0) ? 'No GPS yet — edit to add' : `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}`}</span><button onclick="copyCoord('${r.lat},${r.lng}')">Copy</button></div>
       <div class="conn-list">
-        ${fieldLabels.aLocation}: <b>${r.aLocation || '—'}</b><br>
-        ${fieldLabels.dataCenter}: <b>${r.dataCenter || '—'}</b><br>
+        ${fieldLabels.aLocation}: <b>${r.aLocation || '—'}</b>${(r.aLocationLat||r.aLocationLng)?' · ('+(r.aLocationLat||'?')+', '+(r.aLocationLng||'?')+')':''}<br>
+        ${fieldLabels.dataCenter}: <b>${r.dataCenter || '—'}</b>${(r.dataCenterLat||r.dataCenterLng)?' · ('+(r.dataCenterLat||'?')+', '+(r.dataCenterLng||'?')+')':''}<br>
         ${fieldLabels.ring}: <b>${r.ring || '—'}</b>${r.ring?` <button class="rowCopyBtn" title="Copy ring/segment" onclick="copyToClipboard('${escAttr(r.ring)}', this);">⧉</button>`:''}<br>
         ${fieldLabels.city}: <b>${r.city || '—'}</b><br>
         ${fieldLabels.carrier}: <b>${r.carrier || '—'}</b><br>
@@ -1262,6 +1307,7 @@ function renderLinksSection(r){
     else {
       const a = getPointCoords(r, myPoint), b = getPointCoords(other, otherPoint);
       if((a.lat===0 && a.lng===0) || (b.lat===0 && b.lng===0) || isNaN(a.lat) || isNaN(b.lat)) statusTag = '<span class="lNoGps">Needs GPS on both ends to draw on map</span>';
+      else if(a.lat===b.lat && a.lng===b.lng) statusTag = '<span class="lLen">Co-located — shown as a ring on the map</span>';
     }
     const otherPointLabel = other ? getPointCoords(other, otherPoint).label : otherLabel;
     return `<div class="linkRow">
@@ -1370,10 +1416,14 @@ document.getElementById('dEditBtn').onclick = async ()=>{
       if(relinked) await saveLinks();
     }
     r.aLocation = document.getElementById('eALocation').value;
+    r.aLocationLat = document.getElementById('eALocationLat').value;
+    r.aLocationLng = document.getElementById('eALocationLng').value;
     r.ring = document.getElementById('eRing').value;
     r.city = document.getElementById('eCity').value;
     r.carrier = document.getElementById('eCarrier').value;
     r.dataCenter = document.getElementById('eDataCenter').value;
+    r.dataCenterLat = document.getElementById('eDataCenterLat').value;
+    r.dataCenterLng = document.getElementById('eDataCenterLng').value;
     r.p2pA = document.getElementById('eP2Pa').value;
     r.p2pB = document.getElementById('eP2Pb').value;
     r.pm = document.getElementById('ePM').value;
@@ -1543,7 +1593,7 @@ function refreshTypeSelect(){
 document.getElementById('btnAdd').onclick = ()=>{
   refreshTypeSelect();
   refreshDatalists();
-  ['fLabel','fALocation','fRing','fCity','fCarrier','fDataCenter','fP2Pa','fP2Pb','fPM','fLat','fLng','fNotes',
+  ['fLabel','fALocation','fALocationLat','fALocationLng','fRing','fCity','fCarrier','fDataCenter','fDataCenterLat','fDataCenterLng','fP2Pa','fP2Pb','fPM','fLat','fLng','fNotes',
    'fBackbone','fBackboneFiberId','fBackboneDistance','fBackboneLat','fBackboneLng',
    'fMetro','fMetroFiberId','fMetroDistance','fMetroLat','fMetroLng',
    'fServiceType','fCircuitId'].forEach(id=>document.getElementById(id).value='');
@@ -1577,10 +1627,14 @@ document.getElementById('fSaveBtn').onclick = async ()=>{
     type: document.getElementById('fType').value,
     label,
     aLocation: document.getElementById('fALocation').value,
+    aLocationLat: document.getElementById('fALocationLat').value,
+    aLocationLng: document.getElementById('fALocationLng').value,
     ring: document.getElementById('fRing').value,
     city: document.getElementById('fCity').value,
     carrier: document.getElementById('fCarrier').value,
     dataCenter: document.getElementById('fDataCenter').value,
+    dataCenterLat: document.getElementById('fDataCenterLat').value,
+    dataCenterLng: document.getElementById('fDataCenterLng').value,
     p2pA: document.getElementById('fP2Pa').value,
     p2pB: document.getElementById('fP2Pb').value,
     pm: document.getElementById('fPM').value,
@@ -1901,7 +1955,11 @@ function csvColumns(){
     ['label', 'EXAMPLE-CAB-01'],
     ['fiber_count', '24'],
     ['a_location', 'Example A Location'],
+    ['a_location_lat', '0.0000'],
+    ['a_location_lng', '0.0000'],
     ['data_center', 'Example Data Center'],
+    ['data_center_lat', '0.0000'],
+    ['data_center_lng', '0.0000'],
     ['ring', 'Example Ring - Seg 1'],
     ['city', 'City, ST'],
     ['lat', '0.0000'],
@@ -1992,7 +2050,11 @@ function handleCsvImport(e){
           type: validKeys.includes((norm.type||'').toLowerCase()) ? norm.type.toLowerCase() : (categories[0]?.key || 'cab'),
           label: norm.label || ('Imported ' + i),
           aLocation: norm.a_location || '',
+          aLocationLat: norm.a_location_lat || '',
+          aLocationLng: norm.a_location_lng || '',
           dataCenter: norm.data_center || '',
+          dataCenterLat: norm.data_center_lat || '',
+          dataCenterLng: norm.data_center_lng || '',
           ring: norm.ring || '', city: norm.city || '',
           lat: parseFloat(norm.lat) || 0, lng: parseFloat(norm.lng) || 0,
           fiberCount,
@@ -2053,7 +2115,8 @@ function findLocalMatch(incoming, pool){
   return match || null;
 }
 function diffFields(mine, incoming){
-  const fields = [['aLocation','A Location'],['ring','Ring/Seg'],['city','City'],['carrier','Carrier'],['dataCenter','Z Location / Data Center'],
+  const fields = [['aLocation','A Location'],['aLocationLat','A Location Latitude'],['aLocationLng','A Location Longitude'],
+    ['ring','Ring/Seg'],['city','City'],['carrier','Carrier'],['dataCenter','Z Location / Data Center'],['dataCenterLat','Z Location Latitude'],['dataCenterLng','Z Location Longitude'],
     ['p2pA','Point to Point A'],['p2pB','Point to Point B'],['pm','Area PM'],['lat','Latitude'],['lng','Longitude'],['fiberCount','Fiber Count'],['notes','Notes'],
     ['backbone','Backbone'],['backboneFiberId','Backbone Fiber ID'],['backboneDistance','Backbone Distance'],['backboneLat','Backbone Latitude'],['backboneLng','Backbone Longitude'],
     ['metro','Metro'],['metroFiberId','Metro Fiber ID'],['metroDistance','Metro Distance'],['metroLat','Metro Latitude'],['metroLng','Metro Longitude'],
