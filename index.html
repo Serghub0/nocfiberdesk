@@ -120,6 +120,17 @@
   .field textarea{resize:vertical; min-height:50px;}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+  .dmsRow{display:grid; grid-template-columns:1fr 1fr 1fr 60px; gap:8px;}
+  .dmsRow input, .dmsRow select{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:9px 8px; border-radius:6px; font-size:13px; font-family:var(--sans); text-align:center;}
+  .hierarchyBlock{border:1px solid var(--line); border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:12px; background:var(--panel2); position:relative;}
+  .hierarchyBlock.hidden{display:none;}
+  .hierarchyBlock .removeBlockBtn{position:absolute; top:10px; right:10px; background:none; border:none; color:var(--muted); font-size:15px; cursor:pointer;}
+  .hierarchyBlock .removeBlockBtn:hover{color:var(--danger);}
+  .renameableLabel{cursor:text;}
+  .renameableLabel:hover{text-decoration:underline dotted; text-underline-offset:3px;}
+  .lateralEntry{border:1px solid var(--line); border-radius:6px; padding:10px; margin-bottom:10px; position:relative; display:flex; flex-direction:column; gap:10px;}
+  .lateralEntry .removeLateralBtn{position:absolute; top:8px; right:8px; background:none; border:none; color:var(--muted); font-size:15px; cursor:pointer;}
+  .lateralEntry .removeLateralBtn:hover{color:var(--danger);}
   .modal .mfoot{padding:14px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px;}
   .catRow{display:flex; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);}
   .catRow input[type=color]{width:34px; height:30px; border:none; background:none; padding:0; cursor:pointer;}
@@ -202,9 +213,17 @@
     <div class="mhead"><h3 id="linkModalTitle">Link to Another Site</h3><button class="closeBtn" onclick="closeLinkModal()">✕</button></div>
     <div class="mbody">
       <div class="field">
+        <label>From (this site)</label>
+        <select id="lFromPoint"></select>
+      </div>
+      <div class="field">
         <label>Other Site</label>
         <input id="lOtherSite" list="allSiteNames" placeholder="Start typing a site name…" autocomplete="off"/>
         <datalist id="allSiteNames"></datalist>
+      </div>
+      <div class="field">
+        <label>To (point on that site)</label>
+        <select id="lToPoint"><option value="main">Main Site GPS</option></select>
       </div>
       <div class="row2">
         <div class="field"><label>Fiber Length</label><input id="lLength" placeholder="e.g. 18.4 km"/></div>
@@ -235,8 +254,8 @@
     <div class="mhead"><h3 id="locModalTitle">Add Location</h3><button class="closeBtn" onclick="closeLocModal()">✕</button></div>
     <div class="mbody">
       <div class="row2">
-        <div class="field"><label id="lblCategory">Category</label><select id="fType"></select></div>
-        <div class="field"><label id="lblFiberCount">Fiber Count</label>
+        <div class="field"><label id="lblCategory" class="renameableLabel" onclick="renameFieldLabel('category')" title="Click to rename">Category</label><select id="fType"></select></div>
+        <div class="field"><label id="lblFiberCount" class="renameableLabel" onclick="renameFieldLabel('fiberCount')" title="Click to rename">Fiber Count</label>
           <select id="fFiberCount">
             <option>12</option><option selected>24</option><option>36</option><option>48</option>
             <option>60</option><option>72</option><option>84</option><option>96</option>
@@ -245,62 +264,115 @@
           </select>
         </div>
       </div>
-      <div class="field"><label id="lblLabel">Label / Site Name</label><input id="fLabel" placeholder="e.g. SITE-0001, CAB-01"/></div>
+      <div class="field" style="max-width:280px;"><label id="lblLabel" class="renameableLabel" onclick="renameFieldLabel('label')" title="Click to rename">Label / Site Name</label><input id="fLabel" placeholder="e.g. SITE-0001, CAB-01"/></div>
       <div class="row2">
-        <div class="field">
-          <label id="lblRing">Ring / Segment</label>
-          <input id="fRing" list="ringOptions" placeholder="Type or pick existing…" autocomplete="off"/>
-          <datalist id="ringOptions"></datalist>
-        </div>
-        <div class="field"><label id="lblCity">City / Location</label><input id="fCity" placeholder="e.g. City, ST"/></div>
-      </div>
-      <div class="row3">
-        <div class="field">
-          <label id="lblBackbone">Backbone</label>
-          <input id="fBackbone" list="backboneOptions" placeholder="Type or pick existing…" autocomplete="off"/>
-          <datalist id="backboneOptions"></datalist>
-          <input id="fBackboneGps" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
-        </div>
-        <div class="field">
-          <label id="lblMetro">Metro</label>
-          <input id="fMetro" list="metroOptions" placeholder="Type or pick existing…" autocomplete="off"/>
-          <datalist id="metroOptions"></datalist>
-          <input id="fMetroGps" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
-        </div>
-        <div class="field">
-          <label id="lblLateral">Lateral</label>
-          <input id="fLateral" list="lateralOptions" placeholder="Type or pick existing…" autocomplete="off"/>
-          <datalist id="lateralOptions"></datalist>
-          <input id="fLateralGps" placeholder="GPS (lat, lng)" style="margin-top:6px; font-size:11px; padding:6px 8px;"/>
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field"><label id="lblCarrier">Carrier Name</label><input id="fCarrier" placeholder="e.g. Carrier name"/></div>
-        <div class="field">
-          <label id="lblDataCenter">Data Center</label>
-          <input id="fDataCenter" list="dataCenterOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+        <div class="field"><label id="lblALocation" class="renameableLabel" onclick="renameFieldLabel('aLocation')" title="Click to rename">A Location</label><input id="fALocation" placeholder="e.g. Near-end site name"/></div>
+        <div class="field"><label id="lblDataCenter" class="renameableLabel" onclick="renameFieldLabel('dataCenter')" title="Click to rename">Z Location / Data Center</label>
+          <input id="fDataCenter" list="dataCenterOptions" placeholder="e.g. Data Center Name" autocomplete="off"/>
           <datalist id="dataCenterOptions"></datalist>
         </div>
       </div>
       <div class="row2">
-        <div class="field"><label id="lblP2P">Point to Point</label><input id="fP2P" placeholder="e.g. Site A → Site B, 10km"/></div>
-        <div class="field"><label id="lblPM">Hotwire Area PM</label><input id="fPM" placeholder="PM name"/></div>
+        <div class="field">
+          <label id="lblRing" class="renameableLabel" onclick="renameFieldLabel('ring')" title="Click to rename">Ring / Segment</label>
+          <input id="fRing" list="ringOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+          <datalist id="ringOptions"></datalist>
+        </div>
+        <div class="field"><label id="lblCity" class="renameableLabel" onclick="renameFieldLabel('city')" title="Click to rename">City / Location</label><input id="fCity" placeholder="e.g. City, ST"/></div>
       </div>
       <div class="row2">
-        <div class="field"><label id="lblLat">Latitude</label><input id="fLat" placeholder="27.9506"/></div>
-        <div class="field"><label id="lblLng">Longitude</label><input id="fLng" placeholder="-82.4572"/></div>
+        <div class="field"><label id="lblLat" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fLat" placeholder="27.9506"/></div>
+        <div class="field"><label id="lblLng" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fLng" placeholder="-82.4572"/></div>
+      </div>
+
+      <div class="hierarchyBlock">
+        <div class="row2">
+          <div class="field"><label id="lblBackbone" class="renameableLabel" onclick="renameFieldLabel('backbone')" title="Click to rename">Backbone</label>
+            <input id="fBackbone" list="backboneOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+            <datalist id="backboneOptions"></datalist>
+          </div>
+          <div class="field"><label id="lblFiberId1" class="renameableLabel" onclick="renameFieldLabel('fiberIdLabel')" title="Click to rename">Fiber ID</label><input id="fBackboneFiberId" placeholder="e.g. F1"/></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label id="lblDistance1" class="renameableLabel" onclick="renameFieldLabel('distanceLabel')" title="Click to rename">Distance (km)</label><input id="fBackboneDistance" placeholder="e.g. 18.4"/></div>
+          <div class="field"><label id="lblGpsLat1" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fBackboneLat" placeholder="27.9506"/></div>
+          <div class="field"><label id="lblGpsLng1" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fBackboneLng" placeholder="-82.4572"/></div>
+        </div>
+      </div>
+
+      <div class="hierarchyBlock">
+        <div class="row2">
+          <div class="field"><label id="lblMetro" class="renameableLabel" onclick="renameFieldLabel('metro')" title="Click to rename">Metro</label>
+            <input id="fMetro" list="metroOptions" placeholder="Type or pick existing…" autocomplete="off"/>
+            <datalist id="metroOptions"></datalist>
+          </div>
+          <div class="field"><label id="lblFiberId2" class="renameableLabel" onclick="renameFieldLabel('fiberIdLabel')" title="Click to rename">Fiber ID</label><input id="fMetroFiberId" placeholder="e.g. F2"/></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label id="lblDistance2" class="renameableLabel" onclick="renameFieldLabel('distanceLabel')" title="Click to rename">Distance (km)</label><input id="fMetroDistance" placeholder="e.g. 18.4"/></div>
+          <div class="field"><label id="lblGpsLat2" class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">Latitude</label><input id="fMetroLat" placeholder="27.9506"/></div>
+          <div class="field"><label id="lblGpsLng2" class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">Longitude</label><input id="fMetroLng" placeholder="-82.4572"/></div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <label id="lblLateral" class="renameableLabel" onclick="renameFieldLabel('lateral')" title="Click to rename" style="font-size:11px; color:var(--muted); font-family:var(--mono);">Lateral</label>
+        <div id="lateralEntriesAdd"></div>
+        <datalist id="lateralOptions"></datalist>
+        <button class="manageCatBtn" type="button" id="addLateralBtn" style="align-self:flex-start;">+ Add Another</button>
+      </div>
+
+      <div class="row2">
+        <div class="field"><label id="lblCarrier" class="renameableLabel" onclick="renameFieldLabel('carrier')" title="Click to rename">Carrier Name</label><input id="fCarrier" placeholder="e.g. Carrier name"/></div>
+        <div class="field"><label id="lblPM" class="renameableLabel" onclick="renameFieldLabel('pm')" title="Click to rename">Hotwire Area PM</label><input id="fPM" placeholder="PM name"/></div>
       </div>
       <div class="row2">
-        <div class="field"><label id="lblServiceType">Service Type</label><input id="fServiceType" placeholder="e.g. Lit, Dark, Wave"/></div>
-        <div class="field"><label id="lblCircuitId">Circuit / Splice ID</label><input id="fCircuitId" placeholder="e.g. CKT-4471"/></div>
+        <div class="field"><label id="lblP2Pa" class="renameableLabel" onclick="renameFieldLabel('p2p')" title="Click to rename">Point to Point</label><input id="fP2Pa" placeholder="e.g. Site A"/></div>
+        <div class="field"><label id="lblP2Pb" class="renameableLabel" onclick="renameFieldLabel('p2p')" title="Click to rename">Point to Point</label><input id="fP2Pb" placeholder="e.g. Site B, 10km"/></div>
       </div>
-      <div class="field"><label id="lblNotes">Notes</label><textarea id="fNotes" placeholder="Anything the NOC should know…"></textarea></div>
+      <div class="row2">
+        <div class="field"><label id="lblServiceType" class="renameableLabel" onclick="renameFieldLabel('serviceType')" title="Click to rename">Service Type</label><input id="fServiceType" placeholder="e.g. Lit, Dark, Wave"/></div>
+        <div class="field"><label id="lblCircuitId" class="renameableLabel" onclick="renameFieldLabel('circuitId')" title="Click to rename">Circuit / Splice ID</label><input id="fCircuitId" placeholder="e.g. CKT-4471"/></div>
+      </div>
+      <div class="field"><label id="lblNotes" class="renameableLabel" onclick="renameFieldLabel('notes')" title="Click to rename">Notes</label><textarea id="fNotes" placeholder="Anything the NOC should know…"></textarea></div>
       <div id="customFieldsAdd"></div>
       <button class="manageCatBtn" type="button" id="manageFieldsBtn" style="align-self:flex-start;">+ Manage Extra Fields</button>
     </div>
     <div class="mfoot">
+      <button class="btn" id="openGpsConverterBtn" type="button" title="Convert degrees/minutes/seconds GPS to decimal">🧭 GPS Converter</button>
       <button class="btn" onclick="closeLocModal()">Cancel</button>
       <button class="btn primary" id="fSaveBtn">Save Location</button>
+    </div>
+  </div>
+</div>
+
+<!-- GPS Degrees-to-Decimal Converter Modal -->
+<div class="modalOverlay" id="gpsConverterModal">
+  <div class="modal" style="width:460px;">
+    <div class="mhead"><h3>📍 GPS Degrees to Decimal</h3><button class="closeBtn" onclick="closeGpsConverterModal()">✕</button></div>
+    <div class="mbody">
+      <div class="howHtml"><p>Enter degrees, minutes, and seconds for each coordinate, one at a time, then convert.</p></div>
+      <div class="field"><label>Latitude</label>
+        <div class="dmsRow">
+          <input id="gpsLatDeg" placeholder="D" inputmode="decimal"/>
+          <input id="gpsLatMin" placeholder="'" inputmode="decimal"/>
+          <input id="gpsLatSec" placeholder="&quot;" inputmode="decimal"/>
+          <select id="gpsLatDir"><option value="N">N</option><option value="S">S</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Longitude</label>
+        <div class="dmsRow">
+          <input id="gpsLngDeg" placeholder="D" inputmode="decimal"/>
+          <input id="gpsLngMin" placeholder="'" inputmode="decimal"/>
+          <input id="gpsLngSec" placeholder="&quot;" inputmode="decimal"/>
+          <select id="gpsLngDir"><option value="W">W</option><option value="E">E</option></select>
+        </div>
+      </div>
+      <button class="btn primary" type="button" id="gpsConvBtn" style="align-self:flex-start;">Convert</button>
+      <div id="gpsConvResult"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="closeGpsConverterModal()">Close</button>
     </div>
   </div>
 </div>
@@ -482,9 +554,10 @@ const EXPORT_SALT = 'hwc-gsd1-fiber-desk-2026';
 
 let fieldLabels = {
   category:'Category', fiberCount:'Fiber Count', label:'Label / Site Name', ring:'Ring / Segment',
-  city:'City / Location', carrier:'Carrier Name', dataCenter:'Data Center', p2p:'Point to Point',
+  city:'City / Location', carrier:'Carrier Name', dataCenter:'Z Location / Data Center', p2p:'Point to Point',
   pm:'Hotwire Area PM', lat:'Latitude', lng:'Longitude', notes:'Notes',
-  backbone:'Backbone', metro:'Metro', lateral:'Lateral', serviceType:'Service Type', circuitId:'Circuit / Splice ID'
+  backbone:'Backbone', metro:'Metro', lateral:'Lateral', serviceType:'Service Type', circuitId:'Circuit / Splice ID',
+  aLocation:'A Location', fiberIdLabel:'Fiber ID', distanceLabel:'Distance (km)', lateralNameLabel:'Lateral Name'
 };
 let fieldOptions = {ring:[], dataCenter:[], backbone:[], metro:[], lateral:[]};
 let links = []; // [{id, siteA, siteB, length, type, notes}] — siteA/siteB are site Labels
@@ -506,7 +579,7 @@ function lsSet(key, value){
 }
 
 async function loadData(){
-  records = lsGet('fiber-records', null) || seedRecords();
+  records = (lsGet('fiber-records', null) || seedRecords()).map(normalizeRecord);
   categories = lsGet('fiber-categories', null) || categories;
   activityLog = lsGet('fiber-activity-log', []);
   const savedLabels = lsGet('fiber-field-labels', null);
@@ -572,6 +645,116 @@ function purgeExpired(){
   if(activityLog.length !== beforeLog) saveLog();
 }
 
+/* ---------- HIERARCHY FIELD HELPERS (Backbone/Metro/Lateral, split GPS, fiber-ID port linking) ---------- */
+function parseGpsPair(str){
+  if(!str) return {lat:'', lng:''};
+  const parts = String(str).split(',').map(s=>s.trim());
+  return {lat:parts[0]||'', lng:parts[1]||''};
+}
+/* Brings older saved records (single Backbone/Metro/Lateral GPS text field, no A Location,
+   no Fiber ID/Distance, single Lateral instead of a repeatable list) up to the current shape,
+   without discarding anything already entered. */
+function normalizeRecord(r){
+  if(r.aLocation === undefined) r.aLocation = '';
+  if(r.p2pA === undefined && r.p2pB === undefined){
+    if(r.p2p){
+      const parts = String(r.p2p).split(/→|->/);
+      r.p2pA = (parts[0]||'').trim();
+      r.p2pB = (parts[1]||'').trim();
+    } else {
+      r.p2pA = ''; r.p2pB = '';
+    }
+  }
+  if(r.backboneLat === undefined || r.backboneLng === undefined){
+    const p = parseGpsPair(r.backboneGps);
+    if(r.backboneLat===undefined) r.backboneLat = p.lat;
+    if(r.backboneLng===undefined) r.backboneLng = p.lng;
+  }
+  if(r.backboneFiberId === undefined) r.backboneFiberId = '';
+  if(r.backboneDistance === undefined) r.backboneDistance = '';
+  if(r.metroLat === undefined || r.metroLng === undefined){
+    const p = parseGpsPair(r.metroGps);
+    if(r.metroLat===undefined) r.metroLat = p.lat;
+    if(r.metroLng===undefined) r.metroLng = p.lng;
+  }
+  if(r.metroFiberId === undefined) r.metroFiberId = '';
+  if(r.metroDistance === undefined) r.metroDistance = '';
+  if(!Array.isArray(r.lateralLinks)){
+    if(r.lateral){
+      const p = parseGpsPair(r.lateralGps);
+      r.lateralLinks = [{name:r.lateral, fiberId:'', distance:'', lat:p.lat, lng:p.lng}];
+    } else {
+      r.lateralLinks = [];
+    }
+  }
+  if(Array.isArray(r.ports)) applyHierarchyPortAssignments(r);
+  return r;
+}
+/* Marks every port matching a Fiber ID (e.g. "F1", "1", or "F1,F2" for multiple)
+   as on/assigned and labels it, without stomping a port already marked Live in the port editor. */
+function assignFiberIdToPort(r, fiberIdStr, name, distance){
+  if(!fiberIdStr) return;
+  const nums = String(fiberIdStr).match(/\d+/g);
+  if(!nums) return;
+  nums.forEach(numStr=>{
+    const idx = parseInt(numStr) - 1;
+    if(idx < 0 || idx >= r.fiberCount) return;
+    const existing = r.ports[idx] || {on:false, conn:'', dist:'', live:false};
+    r.ports[idx] = {on:true, live: existing.live||false, conn: name||existing.conn, dist: distance||existing.dist};
+  });
+}
+function applyHierarchyPortAssignments(r){
+  assignFiberIdToPort(r, r.backboneFiberId, r.backbone, r.backboneDistance);
+  assignFiberIdToPort(r, r.metroFiberId, r.metro, r.metroDistance);
+  (r.lateralLinks||[]).forEach(l=>assignFiberIdToPort(r, l.fiberId, l.name, l.distance));
+}
+
+/* ---------- REPEATABLE LATERAL ENTRY UI ---------- */
+function buildLateralEntryHtml(idx, entry){
+  entry = entry || {name:'', fiberId:'', distance:'', lat:'', lng:''};
+  return `<div class="lateralEntry" data-idx="${idx}">
+    <button type="button" class="removeLateralBtn" title="Remove this lateral">✕</button>
+    <div class="row2">
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lateralNameLabel')" title="Click to rename">${fieldLabels.lateralNameLabel}</label><input class="latName" list="lateralOptions" value="${escAttr(entry.name||'')}" placeholder="Type or pick existing…" autocomplete="off"/></div>
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('fiberIdLabel')" title="Click to rename">${fieldLabels.fiberIdLabel}</label><input class="latFiberId" value="${escAttr(entry.fiberId||'')}" placeholder="e.g. F3"/></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('distanceLabel')" title="Click to rename">${fieldLabels.distanceLabel}</label><input class="latDistance" value="${escAttr(entry.distance||'')}" placeholder="e.g. 12.4"/></div>
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lat')" title="Click to rename">${fieldLabels.lat}</label><input class="latLat" value="${escAttr(entry.lat||'')}" placeholder="27.9506"/></div>
+      <div class="field"><label class="renameableLabel" onclick="renameFieldLabel('lng')" title="Click to rename">${fieldLabels.lng}</label><input class="latLng" value="${escAttr(entry.lng||'')}" placeholder="-82.4572"/></div>
+    </div>
+  </div>`;
+}
+function wireRemoveLateralButtons(wrap){
+  wrap.querySelectorAll('.removeLateralBtn').forEach(btn=>{
+    btn.onclick = ()=>btn.closest('.lateralEntry').remove();
+  });
+}
+function renderLateralEntries(containerId, entries, forceOneBlank){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  const list = (entries && entries.length) ? entries : (forceOneBlank ? [{name:'',fiberId:'',distance:'',lat:'',lng:''}] : []);
+  wrap.innerHTML = list.map((e,i)=>buildLateralEntryHtml(i,e)).join('');
+  wireRemoveLateralButtons(wrap);
+}
+function addLateralEntry(containerId){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  wrap.insertAdjacentHTML('beforeend', buildLateralEntryHtml(wrap.querySelectorAll('.lateralEntry').length, null));
+  wireRemoveLateralButtons(wrap);
+}
+function collectLateralEntries(containerId){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return [];
+  return Array.from(wrap.querySelectorAll('.lateralEntry')).map(el=>({
+    name: el.querySelector('.latName').value.trim(),
+    fiberId: el.querySelector('.latFiberId').value.trim(),
+    distance: el.querySelector('.latDistance').value.trim(),
+    lat: el.querySelector('.latLat').value.trim(),
+    lng: el.querySelector('.latLng').value.trim()
+  })).filter(e=>e.name || e.fiberId || e.distance || e.lat || e.lng);
+}
+
 function seedRecords(){
   // No sample data — this version starts empty. Import your JSON export
   // (Settings → Data → Import JSON) to load your actual site data.
@@ -579,14 +762,38 @@ function seedRecords(){
 }
 
 function applyFieldLabels(){
-  const map = {lblCategory:'category', lblFiberCount:'fiberCount', lblLabel:'label', lblRing:'ring',
-    lblCity:'city', lblCarrier:'carrier', lblDataCenter:'dataCenter', lblP2P:'p2p', lblPM:'pm',
+  const map = {lblCategory:'category', lblFiberCount:'fiberCount', lblLabel:'label', lblALocation:'aLocation', lblRing:'ring',
+    lblCity:'city', lblCarrier:'carrier', lblDataCenter:'dataCenter', lblP2Pa:'p2p', lblP2Pb:'p2p', lblPM:'pm',
     lblLat:'lat', lblLng:'lng', lblNotes:'notes', lblBackbone:'backbone', lblMetro:'metro',
-    lblLateral:'lateral', lblServiceType:'serviceType', lblCircuitId:'circuitId'};
+    lblLateral:'lateral', lblServiceType:'serviceType', lblCircuitId:'circuitId',
+    lblFiberId1:'fiberIdLabel', lblFiberId2:'fiberIdLabel', lblDistance1:'distanceLabel', lblDistance2:'distanceLabel',
+    lblGpsLat1:'lat', lblGpsLat2:'lat', lblGpsLng1:'lng', lblGpsLng2:'lng'};
   Object.keys(map).forEach(elId=>{
     const el = document.getElementById(elId);
     if(el) el.textContent = fieldLabels[map[elId]];
   });
+}
+
+/* Click-to-rename right on the form label itself — same underlying data as
+   Settings > Field Labels, just a quicker shortcut for the fields people rename most. */
+function renameFieldLabel(key){
+  const current = fieldLabels[key];
+  const next = prompt('Rename this field label:', current);
+  if(next !== null && next.trim()){
+    fieldLabels[key] = next.trim();
+    saveFieldLabels();
+    applyFieldLabels();
+    // Lateral entries carry their sub-labels inline (rendered per-row), so re-render
+    // any that are currently on screen to pick up the new text, without losing values.
+    ['lateralEntriesAdd','lateralEntriesEdit'].forEach(containerId=>{
+      const wrap = document.getElementById(containerId);
+      if(wrap && wrap.querySelector('.lateralEntry')){
+        const values = collectLateralEntries(containerId);
+        renderLateralEntries(containerId, values);
+      }
+    });
+    if(selectedId) renderDrawer();
+  }
 }
 
 /* ---------- BRAND TITLE + LOGO ---------- */
@@ -726,20 +933,80 @@ function renderMarkers(list){
     marker.on('click', ()=>openDrawer(rec.id));
     markers[rec.id] = marker;
   });
-  renderLinkLines();
+  renderHierarchyMarkers(list);
+  renderLinkLines(list);
+}
+
+/* Backbone/Metro/Lateral each carry their own GPS — these plot as small distinct
+   points (colored to match Map Links) so entering coordinates there actually shows
+   up on the map, not just sits stored in the form. Each point also draws a line
+   straight back to its parent site automatically, with no separate "link" step —
+   if the coordinate is on the map, the connection shows. */
+let hierarchyMarkers = [];
+let hierarchyLines = [];
+function renderHierarchyMarkers(list){
+  hierarchyMarkers.forEach(m=>map.removeLayer(m));
+  hierarchyMarkers = [];
+  hierarchyLines.forEach(l=>map.removeLayer(l));
+  hierarchyLines = [];
+  const addPoint = (rec, lat, lng, name, kindLabel, color) => {
+    const la = parseFloat(lat), ln = parseFloat(lng);
+    if(isNaN(la) || isNaN(ln) || (la===0 && ln===0)) return;
+    const m = L.circleMarker([la, ln], {radius:4, color, fillColor:color, fillOpacity:.9, weight:1.5}).addTo(map);
+    m.bindTooltip(`${rec.label} — ${kindLabel}: ${name||'(unnamed)'}`, {direction:'top', offset:[0,-4]});
+    m.on('click', ()=>openDrawer(rec.id));
+    hierarchyMarkers.push(m);
+    // Connect back to the parent site whenever the site itself has real GPS — unconditional,
+    // no separate Map Link needs to be created for this to show.
+    if(!(rec.lat===0 && rec.lng===0)){
+      const line = L.polyline([[rec.lat,rec.lng],[la,ln]], {color, weight:1.5, opacity:.6, dashArray:'3,5'}).addTo(map);
+      line.bindTooltip(`${rec.label} → ${kindLabel}: ${name||'(unnamed)'}`, {sticky:true});
+      hierarchyLines.push(line);
+    }
+  };
+  list.forEach(rec=>{
+    addPoint(rec, rec.backboneLat, rec.backboneLng, rec.backbone, fieldLabels.backbone, linkTypeInfo('backbone').color);
+    addPoint(rec, rec.metroLat, rec.metroLng, rec.metro, fieldLabels.metro, linkTypeInfo('metro').color);
+    (rec.lateralLinks||[]).forEach(l=> addPoint(rec, l.lat, l.lng, l.name, fieldLabels.lateral, linkTypeInfo('lateral').color));
+  });
 }
 
 let linkLines = [];
 function findSiteByLabel(label){
   return records.find(r=>!r.deleted && r.label.trim().toLowerCase() === (label||'').trim().toLowerCase());
 }
-function renderLinkLines(){
+/* A link's endpoint isn't always the main site GPS anymore — it can be that site's
+   Backbone, Metro, or a specific named Lateral. These resolve which one to use. */
+function getPointOptions(record){
+  const opts = [{value:'main', label:'Main Site GPS'}];
+  if(record.backbone) opts.push({value:'backbone', label:`Backbone: ${record.backbone}`});
+  if(record.metro) opts.push({value:'metro', label:`Metro: ${record.metro}`});
+  (record.lateralLinks||[]).forEach(l=>{ if(l.name) opts.push({value:'lateral:'+l.name, label:`Lateral: ${l.name}`}); });
+  return opts;
+}
+function getPointCoords(record, pointKey){
+  if(!pointKey || pointKey === 'main') return {lat: parseFloat(record.lat), lng: parseFloat(record.lng), label: record.label};
+  if(pointKey === 'backbone') return {lat: parseFloat(record.backboneLat), lng: parseFloat(record.backboneLng), label: record.backbone || fieldLabels.backbone};
+  if(pointKey === 'metro') return {lat: parseFloat(record.metroLat), lng: parseFloat(record.metroLng), label: record.metro || fieldLabels.metro};
+  if(pointKey.indexOf('lateral:') === 0){
+    const name = pointKey.slice(8);
+    const entry = (record.lateralLinks||[]).find(l=>l.name === name);
+    if(entry) return {lat: parseFloat(entry.lat), lng: parseFloat(entry.lng), label: entry.name};
+  }
+  return {lat: parseFloat(record.lat), lng: parseFloat(record.lng), label: record.label};
+}
+function renderLinkLines(list){
   linkLines.forEach(l=>map.removeLayer(l));
   linkLines = [];
+  const visibleLabels = new Set(list.map(r=>r.label.trim().toLowerCase()));
   links.forEach(link=>{
-    const a = findSiteByLabel(link.siteA);
-    const b = findSiteByLabel(link.siteB);
-    if(!a || !b) return;
+    if(!visibleLabels.has(link.siteA.trim().toLowerCase()) || !visibleLabels.has(link.siteB.trim().toLowerCase())) return;
+    const aRec = findSiteByLabel(link.siteA);
+    const bRec = findSiteByLabel(link.siteB);
+    if(!aRec || !bRec) return;
+    const a = getPointCoords(aRec, link.pointA);
+    const b = getPointCoords(bRec, link.pointB);
+    if(isNaN(a.lat) || isNaN(a.lng) || isNaN(b.lat) || isNaN(b.lng)) return;
     if((a.lat===0 && a.lng===0) || (b.lat===0 && b.lng===0)) return; // needs GPS on both ends first
     const info = linkTypeInfo(link.type);
     const line = L.polyline([[a.lat,a.lng],[b.lat,b.lng]], {color:info.color, weight:2.5, opacity:.8, dashArray: link.type==='lateral' ? '6,4' : null}).addTo(map);
@@ -776,8 +1043,10 @@ function filtered(){
     const portConns = (r.ports||[]).map(p=>p.conn||'').join(' ');
     const customVals = Object.values(r.custom||{}).map(v=> (v && typeof v==='object') ? `${v.value||''} ${v.gps||''}` : (v||'')).join(' ');
     const gpsVariants = [`${r.lat}, ${r.lng}`, `${r.lat},${r.lng}`, `${r.lat} ${r.lng}`];
-    const hay = [r.label, r.ring, r.city, r.carrier, r.dataCenter, r.p2p, r.pm, r.notes, portConns, customVals,
-      r.backbone, r.metro, r.lateral, r.backboneGps, r.metroGps, r.lateralGps, r.serviceType, r.circuitId,
+    const lateralVals = (r.lateralLinks||[]).map(l=>[l.name,l.fiberId,l.distance,l.lat,l.lng].join(' ')).join(' ');
+    const hay = [r.label, r.aLocation, r.ring, r.city, r.carrier, r.dataCenter, r.p2pA, r.p2pB, r.pm, r.notes, portConns, customVals,
+      r.backbone, r.metro, r.backboneFiberId, r.backboneDistance, r.backboneLat, r.backboneLng,
+      r.metroFiberId, r.metroDistance, r.metroLat, r.metroLng, lateralVals, r.serviceType, r.circuitId,
       String(r.lat), String(r.lng), ...gpsVariants].join(' ').toLowerCase();
     const hayNoSpace = hay.replace(/\s+/g,'');
     return terms.some(q=>{
@@ -863,20 +1132,37 @@ function renderDrawer(){
       <h4>Site Info (editing)</h4>
       <div class="kv"><div class="k">${fieldLabels.category}</div><select id="eType">${categories.map(c=>`<option value="${c.key}" ${c.key===r.type?'selected':''}>${c.label}</option>`).join('')}</select></div>
       <div class="kv"><div class="k">${fieldLabels.label}</div><input id="eLabel" value="${escAttr(r.label)}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.aLocation}</div><input id="eALocation" value="${escAttr(r.aLocation||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.dataCenter}</div><input id="eDataCenter" list="dataCenterOptions" value="${escAttr(r.dataCenter||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.ring}</div><input id="eRing" list="ringOptions" value="${escAttr(r.ring||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.city}</div><input id="eCity" value="${escAttr(r.city||'')}"/></div>
-      <div class="kv"><div class="k">${fieldLabels.backbone}</div><input id="eBackbone" list="backboneOptions" value="${escAttr(r.backbone||'')}"/></div>
-      <div class="kv"><div class="k">Backbone GPS</div><input id="eBackboneGps" value="${escAttr(r.backboneGps||'')}" placeholder="lat, lng"/></div>
-      <div class="kv"><div class="k">${fieldLabels.metro}</div><input id="eMetro" list="metroOptions" value="${escAttr(r.metro||'')}"/></div>
-      <div class="kv"><div class="k">Metro GPS</div><input id="eMetroGps" value="${escAttr(r.metroGps||'')}" placeholder="lat, lng"/></div>
-      <div class="kv"><div class="k">${fieldLabels.lateral}</div><input id="eLateral" list="lateralOptions" value="${escAttr(r.lateral||'')}"/></div>
-      <div class="kv"><div class="k">Lateral GPS</div><input id="eLateralGps" value="${escAttr(r.lateralGps||'')}" placeholder="lat, lng"/></div>
-      <div class="kv"><div class="k">${fieldLabels.carrier}</div><input id="eCarrier" value="${escAttr(r.carrier||'')}"/></div>
-      <div class="kv"><div class="k">${fieldLabels.dataCenter}</div><input id="eDataCenter" list="dataCenterOptions" value="${escAttr(r.dataCenter||'')}"/></div>
-      <div class="kv"><div class="k">${fieldLabels.p2p}</div><input id="eP2P" value="${escAttr(r.p2p||'')}"/></div>
-      <div class="kv"><div class="k">${fieldLabels.pm}</div><input id="ePM" value="${escAttr(r.pm||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eLat" value="${r.lat}"/></div>
       <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eLng" value="${r.lng}"/></div>
+
+      <h4 class="renameableLabel" style="margin-top:14px; display:inline-block;" onclick="renameFieldLabel('backbone')" title="Click to rename">${fieldLabels.backbone}</h4>
+      <div class="kv"><div class="k">${fieldLabels.backbone}</div><input id="eBackbone" list="backboneOptions" value="${escAttr(r.backbone||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.fiberIdLabel}</div><input id="eBackboneFiberId" value="${escAttr(r.backboneFiberId||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.distanceLabel}</div><input id="eBackboneDistance" value="${escAttr(r.backboneDistance||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eBackboneLat" value="${escAttr(r.backboneLat||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eBackboneLng" value="${escAttr(r.backboneLng||'')}"/></div>
+
+      <div class="hierarchyBlock" style="margin-top:10px;">
+        <h4 class="renameableLabel" style="display:inline-block;" onclick="renameFieldLabel('metro')" title="Click to rename">${fieldLabels.metro}</h4>
+        <div class="kv"><div class="k">${fieldLabels.metro}</div><input id="eMetro" list="metroOptions" value="${escAttr(r.metro||'')}"/></div>
+        <div class="kv"><div class="k">${fieldLabels.fiberIdLabel}</div><input id="eMetroFiberId" value="${escAttr(r.metroFiberId||'')}"/></div>
+        <div class="kv"><div class="k">${fieldLabels.distanceLabel}</div><input id="eMetroDistance" value="${escAttr(r.metroDistance||'')}"/></div>
+        <div class="kv"><div class="k">${fieldLabels.lat}</div><input id="eMetroLat" value="${escAttr(r.metroLat||'')}"/></div>
+        <div class="kv"><div class="k">${fieldLabels.lng}</div><input id="eMetroLng" value="${escAttr(r.metroLng||'')}"/></div>
+      </div>
+
+      <h4 class="renameableLabel" style="margin-top:14px; display:inline-block;" onclick="renameFieldLabel('lateral')" title="Click to rename">${fieldLabels.lateral}</h4>
+      <div id="lateralEntriesEdit" style="margin-bottom:8px;"></div>
+      <button type="button" class="manageCatBtn" onclick="addLateralEntry('lateralEntriesEdit')" style="margin-bottom:14px;">+ Add Another</button>
+
+      <div class="kv"><div class="k">${fieldLabels.carrier}</div><input id="eCarrier" value="${escAttr(r.carrier||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.pm}</div><input id="ePM" value="${escAttr(r.pm||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.p2p} (A)</div><input id="eP2Pa" value="${escAttr(r.p2pA||'')}"/></div>
+      <div class="kv"><div class="k">${fieldLabels.p2p} (B)</div><input id="eP2Pb" value="${escAttr(r.p2pB||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.serviceType}</div><input id="eServiceType" value="${escAttr(r.serviceType||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.circuitId}</div><input id="eCircuitId" value="${escAttr(r.circuitId||'')}"/></div>
       <div class="kv"><div class="k">${fieldLabels.fiberCount}</div><select id="eFiberCount">${[12,24,36,48,60,72,84,96,108,120,144,168,192,216,240,264,288].map(n=>`<option ${n===r.fiberCount?'selected':''}>${n}</option>`).join('')}</select></div>
@@ -891,20 +1177,23 @@ function renderDrawer(){
         return `<div class="kv"><div class="k">${f.label || 'Field'}</div>${f.type==='textarea'?`<textarea data-cf="${f.key}">${escHtml(v||'')}</textarea>`:`<input data-cf="${f.key}" value="${escAttr(v||'')}"/>`}</div>`;
       }).join('')}
     `;
+    renderLateralEntries('lateralEntriesEdit', r.lateralLinks || []);
   } else {
     infoSection.innerHTML = `
       <h4>Site Info</h4>
       <div class="coord" style="margin-bottom:8px;"><span>${(r.lat===0 && r.lng===0) ? 'No GPS yet — edit to add' : `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}`}</span><button onclick="copyCoord('${r.lat},${r.lng}')">Copy</button></div>
       <div class="conn-list">
+        ${fieldLabels.aLocation}: <b>${r.aLocation || '—'}</b><br>
+        ${fieldLabels.dataCenter}: <b>${r.dataCenter || '—'}</b><br>
         ${fieldLabels.ring}: <b>${r.ring || '—'}</b>${r.ring?` <button class="rowCopyBtn" title="Copy ring/segment" onclick="copyToClipboard('${escAttr(r.ring)}', this);">⧉</button>`:''}<br>
         ${fieldLabels.city}: <b>${r.city || '—'}</b><br>
         ${fieldLabels.carrier}: <b>${r.carrier || '—'}</b><br>
-        ${fieldLabels.dataCenter}: <b>${r.dataCenter || '—'}</b><br>
-        ${fieldLabels.p2p}: <b>${r.p2p || '—'}</b><br>
+        ${fieldLabels.p2p}: <b>${(r.p2pA || r.p2pB) ? `${r.p2pA||'—'} → ${r.p2pB||'—'}` : '—'}</b><br>
         ${fieldLabels.pm}: <b>${r.pm || '—'}</b><br>
-        ${fieldLabels.backbone}: <b>${r.backbone || '—'}</b>${r.backboneGps?' ('+r.backboneGps+')':''}<br>
-        ${fieldLabels.metro}: <b>${r.metro || '—'}</b>${r.metroGps?' ('+r.metroGps+')':''}<br>
-        ${fieldLabels.lateral}: <b>${r.lateral || '—'}</b>${r.lateralGps?' ('+r.lateralGps+')':''}<br>
+        ${fieldLabels.backbone}: <b>${r.backbone || '—'}</b>${r.backboneFiberId?' · Fiber '+r.backboneFiberId:''}${r.backboneDistance?' · '+r.backboneDistance+' km':''}${(r.backboneLat||r.backboneLng)?' · ('+(r.backboneLat||'?')+', '+(r.backboneLng||'?')+')':''}<br>
+        ${fieldLabels.metro}: <b>${r.metro || '—'}</b>${r.metroFiberId?' · Fiber '+r.metroFiberId:''}${r.metroDistance?' · '+r.metroDistance+' km':''}${(r.metroLat||r.metroLng)?' · ('+(r.metroLat||'?')+', '+(r.metroLng||'?')+')':''}<br>
+        ${fieldLabels.lateral}: ${(r.lateralLinks && r.lateralLinks.length) ? '' : '<b>—</b>'}
+        ${(r.lateralLinks||[]).map(l=>`<br>&nbsp;&nbsp;• <b>${l.name||'—'}</b>${l.fiberId?' · Fiber '+l.fiberId:''}${l.distance?' · '+l.distance+' km':''}${(l.lat||l.lng)?' · ('+(l.lat||'?')+', '+(l.lng||'?')+')':''}`).join('')}<br>
         ${fieldLabels.serviceType}: <b>${r.serviceType || '—'}</b><br>
         ${fieldLabels.circuitId}: <b>${r.circuitId || '—'}</b><br>
         ${fieldLabels.fiberCount}: <b>${r.fiberCount}</b>
@@ -944,10 +1233,12 @@ function escAttr(s){ return String(s).replace(/"/g,'&quot;'); }
 function escHtml(s){ return String(s).replace(/</g,'&lt;'); }
 
 /* ---------- MAP LINKS ---------- */
-function refreshSiteDatalist(excludeLabel){
+function refreshSiteDatalist(){
   const dl = document.getElementById('allSiteNames');
   if(!dl) return;
-  dl.innerHTML = records.filter(r=>!r.deleted && r.label !== excludeLabel)
+  // Includes the current site itself — two different points on the same site
+  // (its Backbone and its Metro, say) are valid things to link together.
+  dl.innerHTML = records.filter(r=>!r.deleted)
     .map(r=>`<option value="${escAttr(r.label)}"></option>`).join('');
 }
 function renderLinksSection(r){
@@ -959,14 +1250,22 @@ function renderLinksSection(r){
     return;
   }
   wrap.innerHTML = mine.map(l=>{
-    const otherLabel = l.siteA===r.label ? l.siteB : l.siteA;
+    const iAmA = l.siteA===r.label;
+    const otherLabel = iAmA ? l.siteB : l.siteA;
+    const myPoint = iAmA ? l.pointA : l.pointB;
+    const otherPoint = iAmA ? l.pointB : l.pointA;
     const other = findSiteByLabel(otherLabel);
     const info = linkTypeInfo(l.type);
+    const myPointLabel = getPointCoords(r, myPoint).label;
     let statusTag = '';
     if(!other) statusTag = '<span class="lNoGps">Other site not found or deleted</span>';
-    else if((other.lat===0 && other.lng===0) || (r.lat===0 && r.lng===0)) statusTag = '<span class="lNoGps">Needs GPS on both ends to draw on map</span>';
+    else {
+      const a = getPointCoords(r, myPoint), b = getPointCoords(other, otherPoint);
+      if((a.lat===0 && a.lng===0) || (b.lat===0 && b.lng===0) || isNaN(a.lat) || isNaN(b.lat)) statusTag = '<span class="lNoGps">Needs GPS on both ends to draw on map</span>';
+    }
+    const otherPointLabel = other ? getPointCoords(other, otherPoint).label : otherLabel;
     return `<div class="linkRow">
-      <div class="lMeta"><b>${otherLabel}</b><span class="lType" style="background:${info.color}22;color:${info.color}">${info.label}</span>${l.length?`<span class="lLen">${l.length}</span>`:''}${statusTag}</div>
+      <div class="lMeta"><b>${myPointLabel} → ${otherPointLabel}</b><span class="lType" style="background:${info.color}22;color:${info.color}">${info.label}</span>${l.length?`<span class="lLen">${l.length}</span>`:''}${statusTag}</div>
       <button class="btn danger" style="padding:4px 9px;font-size:11px;" data-id="${l.id}">Remove</button>
     </div>`;
   }).join('');
@@ -977,7 +1276,16 @@ function renderLinksSection(r){
 function openLinkModal(){
   const r = records.find(x=>x.id===selectedId);
   if(!r) return;
-  refreshSiteDatalist(r.label);
+  const otherSitesCount = records.filter(x=>!x.deleted && x.label !== r.label).length;
+  const ownPointCount = getPointOptions(r).length; // Main + Backbone + Metro + each named Lateral
+  if(otherSitesCount === 0 && ownPointCount < 2){
+    alert('There\'s nothing to link to yet — add another location, or fill in a Backbone/Metro/Lateral on this site so there are at least two points to connect.');
+    return;
+  }
+  refreshSiteDatalist();
+  document.getElementById('lFromPoint').innerHTML = getPointOptions(r).map(o=>`<option value="${o.value}">${escHtml(o.label)}</option>`).join('');
+  document.getElementById('lFromPoint').value = 'main';
+  document.getElementById('lToPoint').innerHTML = '<option value="main">Main Site GPS</option>';
   document.getElementById('lOtherSite').value = '';
   document.getElementById('lLength').value = '';
   document.getElementById('lType').value = 'backbone';
@@ -987,26 +1295,39 @@ function openLinkModal(){
 }
 function closeLinkModal(){ document.getElementById('linkModal').classList.remove('open'); }
 document.getElementById('addLinkBtn').onclick = openLinkModal;
+document.getElementById('lOtherSite').addEventListener('input', function(){
+  const other = findSiteByLabel(this.value);
+  const toSel = document.getElementById('lToPoint');
+  toSel.innerHTML = other
+    ? getPointOptions(other).map(o=>`<option value="${o.value}">${escHtml(o.label)}</option>`).join('')
+    : '<option value="main">Main Site GPS</option>';
+});
 document.getElementById('lSaveBtn').onclick = async ()=>{
   const r = records.find(x=>x.id===selectedId);
   if(!r) return;
   const otherName = document.getElementById('lOtherSite').value.trim();
   if(!otherName){ alert('Pick or type the other site\'s name.'); return; }
-  if(otherName.toLowerCase() === r.label.toLowerCase()){ alert('A site cannot link to itself.'); return; }
   const other = findSiteByLabel(otherName);
   if(!other){ alert(`No site named "${otherName}" found. Check the spelling or pick one from the list.`); return; }
+  const pointA = document.getElementById('lFromPoint').value;
+  const pointB = document.getElementById('lToPoint').value;
+  const sameSite = otherName.toLowerCase() === r.label.toLowerCase();
+  if(sameSite && pointA === pointB){ alert('Pick two different points to link — that\'s the exact same point on itself.'); return; }
   const dup = links.find(l=>
-    (l.siteA===r.label && l.siteB===other.label) || (l.siteA===other.label && l.siteB===r.label));
-  if(dup){ alert('These two sites are already linked. Remove the existing link first if you want to change it.'); return; }
+    (l.siteA===r.label && l.siteB===other.label && l.pointA===pointA && l.pointB===pointB) ||
+    (l.siteA===other.label && l.siteB===r.label && l.pointA===pointB && l.pointB===pointA));
+  if(dup){ alert('These two points are already linked. Remove the existing link first if you want to change it.'); return; }
   const link = {
     id:'link'+Date.now(),
     siteA: r.label, siteB: other.label,
+    pointA, pointB,
     length: document.getElementById('lLength').value,
     type: document.getElementById('lType').value,
     notes: document.getElementById('lNotes').value
   };
   links.push(link);
-  logEvent('link', `${r.label} ↔ ${other.label}`, `${linkTypeInfo(link.type).label} link created${link.length?' · '+link.length:''}`);
+  const aLabel = getPointCoords(r, pointA).label, bLabel = getPointCoords(other, pointB).label;
+  logEvent('link', `${aLabel} ↔ ${bLabel}`, `${linkTypeInfo(link.type).label} link created${link.length?' · '+link.length:''}`);
   await saveLinks();
   closeLinkModal();
   renderLinksSection(r);
@@ -1048,34 +1369,42 @@ document.getElementById('dEditBtn').onclick = async ()=>{
       });
       if(relinked) await saveLinks();
     }
+    r.aLocation = document.getElementById('eALocation').value;
     r.ring = document.getElementById('eRing').value;
     r.city = document.getElementById('eCity').value;
     r.carrier = document.getElementById('eCarrier').value;
     r.dataCenter = document.getElementById('eDataCenter').value;
-    r.p2p = document.getElementById('eP2P').value;
+    r.p2pA = document.getElementById('eP2Pa').value;
+    r.p2pB = document.getElementById('eP2Pb').value;
     r.pm = document.getElementById('ePM').value;
     r.lat = parseFloat(document.getElementById('eLat').value) || r.lat;
     r.lng = parseFloat(document.getElementById('eLng').value) || r.lng;
     r.backbone = document.getElementById('eBackbone').value;
-    r.backboneGps = document.getElementById('eBackboneGps').value;
+    r.backboneFiberId = document.getElementById('eBackboneFiberId').value;
+    r.backboneDistance = document.getElementById('eBackboneDistance').value;
+    r.backboneLat = document.getElementById('eBackboneLat').value;
+    r.backboneLng = document.getElementById('eBackboneLng').value;
     r.metro = document.getElementById('eMetro').value;
-    r.metroGps = document.getElementById('eMetroGps').value;
-    r.lateral = document.getElementById('eLateral').value;
-    r.lateralGps = document.getElementById('eLateralGps').value;
+    r.metroFiberId = document.getElementById('eMetroFiberId').value;
+    r.metroDistance = document.getElementById('eMetroDistance').value;
+    r.metroLat = document.getElementById('eMetroLat').value;
+    r.metroLng = document.getElementById('eMetroLng').value;
+    r.lateralLinks = collectLateralEntries('lateralEntriesEdit');
     r.serviceType = document.getElementById('eServiceType').value;
     r.circuitId = document.getElementById('eCircuitId').value;
     registerOptionValue('ring', r.ring);
     registerOptionValue('dataCenter', r.dataCenter);
     registerOptionValue('backbone', r.backbone);
     registerOptionValue('metro', r.metro);
-    registerOptionValue('lateral', r.lateral);
+    r.lateralLinks.forEach(l=>registerOptionValue('lateral', l.name));
     refreshDatalists();
     const newCount = parseInt(document.getElementById('eFiberCount').value);
     if(newCount !== r.fiberCount){
       const oldPorts = r.ports || [];
-      r.ports = Array.from({length:newCount}, (_,i)=> oldPorts[i] || {on:false, conn:'', dist:''});
+      r.ports = Array.from({length:newCount}, (_,i)=> oldPorts[i] || {on:false, conn:'', dist:'', live:false});
       r.fiberCount = newCount;
     }
+    applyHierarchyPortAssignments(r);
     r.notes = document.getElementById('eNotes').value;
     r.custom = r.custom || {};
     customFields.forEach(f=>{
@@ -1133,6 +1462,50 @@ function copyToClipboard(text, btnEl){
   }
 }
 
+/* ---------- GPS DEGREES-TO-DECIMAL CONVERTER ---------- */
+/* Structured Degrees/Minutes/Seconds/Direction boxes instead of free-text parsing —
+   plain arithmetic on known fields is reliable; parsing arbitrary pasted formats isn't. */
+function dmsToDecimal(deg, min, sec, dir){
+  deg = parseFloat(deg) || 0; min = parseFloat(min) || 0; sec = parseFloat(sec) || 0;
+  let dd = deg + min/60 + sec/3600;
+  if(dir === 'S' || dir === 'W') dd = -dd;
+  return dd;
+}
+function openGpsConverterModal(){
+  ['gpsLatDeg','gpsLatMin','gpsLatSec','gpsLngDeg','gpsLngMin','gpsLngSec'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('gpsLatDir').value = 'N';
+  document.getElementById('gpsLngDir').value = 'W';
+  document.getElementById('gpsConvResult').innerHTML = '';
+  document.getElementById('gpsConverterModal').classList.add('open');
+}
+function closeGpsConverterModal(){ document.getElementById('gpsConverterModal').classList.remove('open'); }
+document.getElementById('openGpsConverterBtn').onclick = openGpsConverterModal;
+document.getElementById('gpsConvBtn').onclick = ()=>{
+  const box = document.getElementById('gpsConvResult');
+  const latDeg = document.getElementById('gpsLatDeg').value, lngDeg = document.getElementById('gpsLngDeg').value;
+  if(latDeg === '' || lngDeg === ''){
+    box.innerHTML = `<div class="verifyBadge bad" style="margin-top:10px;">Enter at least the degrees for both Latitude and Longitude.</div>`;
+    return;
+  }
+  const lat = dmsToDecimal(latDeg, document.getElementById('gpsLatMin').value, document.getElementById('gpsLatSec').value, document.getElementById('gpsLatDir').value);
+  const lng = dmsToDecimal(lngDeg, document.getElementById('gpsLngMin').value, document.getElementById('gpsLngSec').value, document.getElementById('gpsLngDir').value);
+  const latStr = lat.toFixed(6), lngStr = lng.toFixed(6);
+  box.innerHTML = `
+    <div class="coord" style="margin-top:10px;"><span>Latitude: ${latStr}</span><button id="gpsCopyLat">Copy</button></div>
+    <div class="coord" style="margin-top:8px;"><span>Longitude: ${lngStr}</span><button id="gpsCopyLng">Copy</button></div>
+    <div class="coord" style="margin-top:8px;"><span>Both: ${latStr}, ${lngStr}</span><button id="gpsCopyBoth">Copy</button></div>
+    <button class="btn primary" type="button" id="gpsUseBtn" style="margin-top:10px;">Use for Latitude / Longitude</button>
+  `;
+  document.getElementById('gpsCopyLat').onclick = (e)=>copyToClipboard(latStr, e.target);
+  document.getElementById('gpsCopyLng').onclick = (e)=>copyToClipboard(lngStr, e.target);
+  document.getElementById('gpsCopyBoth').onclick = (e)=>copyToClipboard(`${latStr}, ${lngStr}`, e.target);
+  document.getElementById('gpsUseBtn').onclick = ()=>{
+    document.getElementById('fLat').value = latStr;
+    document.getElementById('fLng').value = lngStr;
+    closeGpsConverterModal();
+  };
+};
+
 /* ---------- PORT EDIT MODAL ---------- */
 function openPortModal(recordId, idx){
   activePortEdit = {recordId, idx};
@@ -1170,14 +1543,19 @@ function refreshTypeSelect(){
 document.getElementById('btnAdd').onclick = ()=>{
   refreshTypeSelect();
   refreshDatalists();
-  ['fLabel','fRing','fCity','fCarrier','fDataCenter','fP2P','fPM','fLat','fLng','fNotes',
-   'fBackbone','fBackboneGps','fMetro','fMetroGps','fLateral','fLateralGps','fServiceType','fCircuitId'].forEach(id=>document.getElementById(id).value='');
+  ['fLabel','fALocation','fRing','fCity','fCarrier','fDataCenter','fP2Pa','fP2Pb','fPM','fLat','fLng','fNotes',
+   'fBackbone','fBackboneFiberId','fBackboneDistance','fBackboneLat','fBackboneLng',
+   'fMetro','fMetroFiberId','fMetroDistance','fMetroLat','fMetroLng',
+   'fServiceType','fCircuitId'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fFiberCount').value = '24';
   document.getElementById('locModalTitle').textContent = 'Add Location';
+  renderLateralEntries('lateralEntriesAdd', []);
   renderAddFormCustomFields();
   document.getElementById('locModal').classList.add('open');
 };
 function closeLocModal(){ document.getElementById('locModal').classList.remove('open'); }
+document.getElementById('addLateralBtn').onclick = ()=>addLateralEntry('lateralEntriesAdd');
+
 document.getElementById('fSaveBtn').onclick = async ()=>{
   const label = document.getElementById('fLabel').value.trim();
   if(!label){ alert('Label is required.'); return; }
@@ -1193,38 +1571,47 @@ document.getElementById('fSaveBtn').onclick = async ()=>{
       custom[f.key] = el ? el.value : '';
     }
   });
+  const lateralLinks = collectLateralEntries('lateralEntriesAdd');
   const rec = {
     id:'loc'+Date.now(),
     type: document.getElementById('fType').value,
     label,
+    aLocation: document.getElementById('fALocation').value,
     ring: document.getElementById('fRing').value,
     city: document.getElementById('fCity').value,
     carrier: document.getElementById('fCarrier').value,
     dataCenter: document.getElementById('fDataCenter').value,
-    p2p: document.getElementById('fP2P').value,
+    p2pA: document.getElementById('fP2Pa').value,
+    p2pB: document.getElementById('fP2Pb').value,
     pm: document.getElementById('fPM').value,
     lat: parseFloat(document.getElementById('fLat').value) || 0,
     lng: parseFloat(document.getElementById('fLng').value) || 0,
     fiberCount,
-    ports: Array.from({length:fiberCount}, ()=>({on:false, conn:'', dist:''})),
+    ports: Array.from({length:fiberCount}, ()=>({on:false, conn:'', dist:'', live:false})),
     notes: document.getElementById('fNotes').value,
     backbone: document.getElementById('fBackbone').value,
-    backboneGps: document.getElementById('fBackboneGps').value,
+    backboneFiberId: document.getElementById('fBackboneFiberId').value,
+    backboneDistance: document.getElementById('fBackboneDistance').value,
+    backboneLat: document.getElementById('fBackboneLat').value,
+    backboneLng: document.getElementById('fBackboneLng').value,
     metro: document.getElementById('fMetro').value,
-    metroGps: document.getElementById('fMetroGps').value,
-    lateral: document.getElementById('fLateral').value,
-    lateralGps: document.getElementById('fLateralGps').value,
+    metroFiberId: document.getElementById('fMetroFiberId').value,
+    metroDistance: document.getElementById('fMetroDistance').value,
+    metroLat: document.getElementById('fMetroLat').value,
+    metroLng: document.getElementById('fMetroLng').value,
+    lateralLinks,
     serviceType: document.getElementById('fServiceType').value,
     circuitId: document.getElementById('fCircuitId').value,
     custom,
     updatedAt: Date.now()
   };
+  applyHierarchyPortAssignments(rec);
   records.push(rec);
   registerOptionValue('ring', rec.ring);
   registerOptionValue('dataCenter', rec.dataCenter);
   registerOptionValue('backbone', rec.backbone);
   registerOptionValue('metro', rec.metro);
-  registerOptionValue('lateral', rec.lateral);
+  lateralLinks.forEach(l=>registerOptionValue('lateral', l.name));
   refreshDatalists();
   logEvent('add', rec.label, `${catByKey(rec.type).label} · ${rec.city||''}`);
   await saveRecords();
@@ -1308,7 +1695,7 @@ function renderSettingsBody(){
       <h5>Nothing is ever deleted immediately</h5>
       <p>Deleting a location doesn't erase it — it moves to <b>Recently Deleted</b> and stays there, recoverable, for ${RETENTION_DAYS} days. Every add, edit, delete, restore, port change, and category change is written to the <b>Activity Log</b>, and log entries also stay for ${RETENTION_DAYS} days before aging out automatically. Nothing in either list can be force-removed early.</p>
       <h5>Linking sites on the map</h5>
-      <p>Open any site and click <b>+ Link to Another Site</b> to draw a connection line on the map between it and another site, tagged with a fiber length and a type (Backbone, Metro, Lateral, or Point to Point) — each type shows in its own color. This is a straight line between the two points to show that a connection exists and how long it is; it does not trace the actual physical cable route the way your Google Earth KMZ does. A link only draws on the map once both sites have real GPS coordinates — until then it still shows in each site's Map Links list with a note that it's waiting on GPS. Renaming a site automatically updates any links pointing to it, so nothing silently breaks.</p>
+      <p>Open any site and click <b>+ Link to Another Site</b> to draw a connection line on the map, tagged with a fiber length and a type (Backbone, Metro, Lateral, or Point to Point) — each type shows in its own color. The "From" and "To" dropdowns let you pick exactly which point to connect on each side — the site's Main GPS, its Backbone, its Metro, or a specific named Lateral — instead of always using the main site location. This is separate from the automatic dashed lines each site already draws to its own Backbone/Metro/Lateral points; a Map Link is for connecting two different sites (or two different points) together on purpose. It's a straight line to show a connection exists and how long it is, not a traced physical route. A link only draws once both chosen points have real GPS; until then it still shows in the Map Links list with a note that it's waiting on GPS. Renaming a site automatically updates any links pointing to it.</p>
       <h5>Searching for a few sites at once</h5>
       <p>Separate multiple search terms with a comma (,), semicolon (;), or asterisk (*) — for example: <b>SPLICE-168080, ROW CAB 7, TPA Ring1 Seg1 Cab1</b>. The list and map will narrow down to only the sites matching any one of those terms, so you can pull up a handful of specific locations side by side instead of hunting through everything. This works with names, GPS, carriers, ports — anything the regular search already matches.</p>
       <h5>About the export password</h5>
@@ -1426,7 +1813,7 @@ function renderDataTab(body){
     </div>
     <div class="howHtml">
       <h5>Mass upload from a spreadsheet</h5>
-      <p>Download the CSV template, fill it in Excel or Google Sheets, then import it back. The columns always mirror exactly what's in the Add Location form — including any custom fields you've added — so downloading a fresh template after adding a new field will always include it automatically.</p>
+      <p>Download the CSV template, fill it in Excel or Google Sheets, then import it back. The columns mirror the Add Location form field-for-field — including any custom fields you've added, added automatically the next time you download a fresh template. Backbone and Metro get one column-set each, matching the form. Lateral is repeatable in the form, so the CSV includes 3 Lateral slots (lateral1_ through lateral3_) by default — add lateral4_name, lateral4_fiber_id, etc. columns yourself if a site needs more than 3.</p>
     </div>
     <div class="dataTabBtns">
       <button class="btn" id="dataTemplateBtn">CSV Template</button>
@@ -1460,9 +1847,9 @@ function factoryReset(){
 }
 
 function renderLabelsTab(body){
-  const map = [['category','Category'],['fiberCount','Fiber Count'],['label','Label / Site Name'],['ring','Ring / Segment'],
-    ['city','City / Location'],['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],
-    ['carrier','Carrier Name'],['dataCenter','Data Center'],['p2p','Point to Point'],
+  const map = [['category','Category'],['fiberCount','Fiber Count'],['label','Label / Site Name'],['aLocation','A Location'],['dataCenter','Z Location / Data Center'],
+    ['ring','Ring / Segment'],['city','City / Location'],['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],
+    ['carrier','Carrier Name'],['p2p','Point to Point'],
     ['pm','Hotwire Area PM'],['lat','Latitude'],['lng','Longitude'],['serviceType','Service Type'],['circuitId','Circuit / Splice ID'],['notes','Notes']];
   body.innerHTML = `<div class="howHtml"><p>Rename any field label used in the Add Location form and location details. Changes apply immediately.</p></div>` +
     map.map(([key])=>`<div class="labelRow"><span>${key}</span><input data-key="${key}" value="${escAttr(fieldLabels[key])}"/></div>`).join('');
@@ -1502,31 +1889,51 @@ function customFieldSlug(f){
   const base = (f.label || f.key || 'field').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
   return 'cf_' + (base || 'field');
 }
+/* Single source of truth for CSV columns — mirrors the Add Location form field-for-field.
+   Backbone and Metro are single fields in the form, so they get one column-set each.
+   Lateral is repeatable in the form (unlimited "+ Add Another"), which a flat CSV can't
+   represent directly — this defaults to 3 Lateral slots as a practical starting point;
+   add lateral4_*, lateral5_*, etc. columns yourself if a site needs more than that. */
+const LATERAL_CSV_SLOTS = 3;
 function csvColumns(){
-  // [csvHeader, exampleValue] in the same order as the Add Location form
   const cols = [
     ['type', 'cab'],
     ['label', 'EXAMPLE-CAB-01'],
     ['fiber_count', '24'],
+    ['a_location', 'Example A Location'],
+    ['data_center', 'Example Data Center'],
     ['ring', 'Example Ring - Seg 1'],
     ['city', 'City, ST'],
-    ['backbone', 'Example Backbone'],
-    ['backbone_gps', '0.0000,0.0000'],
-    ['metro', 'Example Metro'],
-    ['metro_gps', '0.0000,0.0000'],
-    ['lateral', 'Example Lateral'],
-    ['lateral_gps', '0.0000,0.0000'],
-    ['carrier', 'Carrier Name'],
-    ['data_center', 'Data Center Name'],
-    ['point_to_point', 'Site A -> Site B 10km'],
-    ['area_pm', 'PM Name'],
     ['lat', '0.0000'],
     ['lng', '0.0000'],
+    ['backbone', 'Example Backbone'],
+    ['backbone_fiber_id', 'F1'],
+    ['backbone_distance', '18.4'],
+    ['backbone_lat', '0.0000'],
+    ['backbone_lng', '0.0000'],
+    ['metro', 'Example Metro'],
+    ['metro_fiber_id', 'F2'],
+    ['metro_distance', '18.4'],
+    ['metro_lat', '0.0000'],
+    ['metro_lng', '0.0000']
+  ];
+  for(let i=1; i<=LATERAL_CSV_SLOTS; i++){
+    cols.push([`lateral${i}_name`, `Example Lateral ${i}`]);
+    cols.push([`lateral${i}_fiber_id`, `F${2+i}`]);
+    cols.push([`lateral${i}_distance`, '12.4']);
+    cols.push([`lateral${i}_lat`, '0.0000']);
+    cols.push([`lateral${i}_lng`, '0.0000']);
+  }
+  cols.push(
+    ['carrier', 'Carrier Name'],
+    ['area_pm', 'PM Name'],
+    ['point_to_point_a', 'Site A'],
+    ['point_to_point_b', 'Site B, 10km'],
     ['service_type', 'Lit'],
     ['circuit_id', 'CKT-0001'],
     ['active_ports', '1|2|7|8'],
     ['notes', 'Example row - delete before mass upload']
-  ];
+  );
   customFields.forEach(f=>{
     const slug = customFieldSlug(f);
     if(f.type === 'gps'){
@@ -1569,36 +1976,62 @@ function handleCsvImport(e){
             custom[field.key] = norm[slug];
           }
         });
+        const lateralLinks = [];
+        for(let li=1; li<=LATERAL_CSV_SLOTS; li++){
+          const name = norm[`lateral${li}_name`] || '';
+          const fiberId = norm[`lateral${li}_fiber_id`] || '';
+          const distance = norm[`lateral${li}_distance`] || '';
+          const lat = norm[`lateral${li}_lat`] || '';
+          const lng = norm[`lateral${li}_lng`] || '';
+          if(name || fiberId || distance || lat || lng){
+            lateralLinks.push({name, fiberId, distance, lat, lng});
+          }
+        }
         return {
           id:'imp'+i+'_'+Date.now(),
           type: validKeys.includes((norm.type||'').toLowerCase()) ? norm.type.toLowerCase() : (categories[0]?.key || 'cab'),
           label: norm.label || ('Imported ' + i),
+          aLocation: norm.a_location || '',
+          dataCenter: norm.data_center || '',
           ring: norm.ring || '', city: norm.city || '',
-          carrier: norm.carrier || '', dataCenter: norm.data_center || '',
-          p2p: norm.point_to_point || '', pm: norm.area_pm || '',
           lat: parseFloat(norm.lat) || 0, lng: parseFloat(norm.lng) || 0,
           fiberCount,
-          ports: Array.from({length:fiberCount}, (_,idx)=>({on:activeSet.has(idx+1), conn:'', dist:''})),
+          ports: Array.from({length:fiberCount}, (_,idx)=>({on:activeSet.has(idx+1), conn:'', dist:'', live:false})),
           notes: norm.notes || '',
-          backbone: norm.backbone || '', backboneGps: norm.backbone_gps || '',
-          metro: norm.metro || '', metroGps: norm.metro_gps || '',
-          lateral: norm.lateral || '', lateralGps: norm.lateral_gps || '',
+          backbone: norm.backbone || '',
+          backboneFiberId: norm.backbone_fiber_id || '',
+          backboneDistance: norm.backbone_distance || '',
+          backboneLat: norm.backbone_lat || '',
+          backboneLng: norm.backbone_lng || '',
+          metro: norm.metro || '',
+          metroFiberId: norm.metro_fiber_id || '',
+          metroDistance: norm.metro_distance || '',
+          metroLat: norm.metro_lat || '',
+          metroLng: norm.metro_lng || '',
+          lateralLinks,
+          carrier: norm.carrier || '',
+          pm: norm.area_pm || '',
+          p2pA: norm.point_to_point_a || '',
+          p2pB: norm.point_to_point_b || '',
           serviceType: norm.service_type || '',
           circuitId: norm.circuit_id || '',
           custom,
           updatedAt: Date.now()
         };
       }); // no longer drops rows missing GPS — sites can be added first, coordinates filled in later
-      records = records.concat(imported);
-      imported.forEach(r=>{
+      const normalizedImported = imported.map(normalizeRecord);
+      records = records.concat(normalizedImported);
+      normalizedImported.forEach(r=>{
         registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
-        registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro); registerOptionValue('lateral', r.lateral);
+        registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro);
+        applyHierarchyPortAssignments(r);
+        (r.lateralLinks||[]).forEach(l=>registerOptionValue('lateral', l.name));
       });
       refreshDatalists();
-      logEvent('add', `${imported.length} locations`, `Mass import from ${file.name}`);
+      logEvent('add', `${normalizedImported.length} locations`, `Mass import from ${file.name}`);
       await saveRecords();
       renderList();
-      alert(imported.length + ' locations imported from ' + file.name);
+      alert(normalizedImported.length + ' locations imported from ' + file.name);
     }
   });
   e.target.value = '';
@@ -1620,11 +2053,14 @@ function findLocalMatch(incoming, pool){
   return match || null;
 }
 function diffFields(mine, incoming){
-  const fields = [['ring','Ring/Seg'],['city','City'],['carrier','Carrier'],['dataCenter','Data Center'],
-    ['p2p','Point to Point'],['pm','Area PM'],['lat','Latitude'],['lng','Longitude'],['fiberCount','Fiber Count'],['notes','Notes'],
-    ['backbone','Backbone'],['metro','Metro'],['lateral','Lateral'],['backboneGps','Backbone GPS'],['metroGps','Metro GPS'],['lateralGps','Lateral GPS'],['serviceType','Service Type'],['circuitId','Circuit / Splice ID']];
+  const fields = [['aLocation','A Location'],['ring','Ring/Seg'],['city','City'],['carrier','Carrier'],['dataCenter','Z Location / Data Center'],
+    ['p2pA','Point to Point A'],['p2pB','Point to Point B'],['pm','Area PM'],['lat','Latitude'],['lng','Longitude'],['fiberCount','Fiber Count'],['notes','Notes'],
+    ['backbone','Backbone'],['backboneFiberId','Backbone Fiber ID'],['backboneDistance','Backbone Distance'],['backboneLat','Backbone Latitude'],['backboneLng','Backbone Longitude'],
+    ['metro','Metro'],['metroFiberId','Metro Fiber ID'],['metroDistance','Metro Distance'],['metroLat','Metro Latitude'],['metroLng','Metro Longitude'],
+    ['serviceType','Service Type'],['circuitId','Circuit / Splice ID']];
   const diffs = [];
   fields.forEach(([k,label])=>{ if(String(mine[k]||'') !== String(incoming[k]||'')) diffs.push(label); });
+  if(JSON.stringify(mine.lateralLinks||[]) !== JSON.stringify(incoming.lateralLinks||[])) diffs.push('Lateral');
   const customKeys = new Set([...Object.keys(mine.custom||{}), ...Object.keys(incoming.custom||{})]);
   let customDiff = false;
   customKeys.forEach(k=>{
@@ -1697,6 +2133,7 @@ function handleJsonImport(e){
     }
     if(!verified && !confirm("This file's signature doesn't match what this tool produces — it may have been altered. Import anyway?")) return;
     if(!Array.isArray(data.records)){ alert('This file has no location data to import.'); return; }
+    data.records = data.records.map(normalizeRecord);
 
     // Merge non-record entities immediately — these aren't "duplicates" in the same sense
     if(Array.isArray(data.categories)) categories = data.categories;
@@ -1760,7 +2197,8 @@ function handleJsonImport(e){
       records = records.concat(newRecords);
       newRecords.forEach(r=>{
         registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
-        registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro); registerOptionValue('lateral', r.lateral);
+        registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro);
+        (r.lateralLinks||[]).forEach(l=>registerOptionValue('lateral', l.name));
       });
       refreshDatalists();
       logEvent('edit', 'Data imported', `${newRecords.length} new locations from ${file.name}${data.exportNote ? ' — '+data.exportNote : ''}${newFieldCount ? ` · ${newFieldCount} new field(s) picked up` : ''}`);
@@ -1847,7 +2285,8 @@ document.getElementById('applyConflictBtn').onclick = async ()=>{
   records = records.concat(newRecords);
   [...newRecords, ...conflicts.filter(c=>c.choice==='incoming').map(c=>c.incoming)].forEach(r=>{
     registerOptionValue('ring', r.ring); registerOptionValue('dataCenter', r.dataCenter);
-    registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro); registerOptionValue('lateral', r.lateral);
+    registerOptionValue('backbone', r.backbone); registerOptionValue('metro', r.metro);
+    (r.lateralLinks||[]).forEach(l=>registerOptionValue('lateral', l.name));
   });
   refreshDatalists();
   logEvent('edit', 'Import resolved', `${meta.fileName}: ${newRecords.length} new · ${keptIncoming} updated from incoming · ${keptMine} kept as mine${meta.exportNote ? ' — '+meta.exportNote : ''}`);
