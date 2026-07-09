@@ -164,10 +164,6 @@
 
   <div id="main">
     <div id="map"></div>
-    <div id="insertNodeBanner" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:1000; background:var(--panel); border:1px solid var(--occupied); border-radius:8px; padding:10px 16px; font-size:12.5px; box-shadow:0 4px 16px rgba(0,0,0,.4); align-items:center; gap:12px;">
-      <span>Click the map where the enclosure sits — that's where the new node will be inserted.</span>
-      <button class="btn" id="insertNodeCancelBtn" style="flex-shrink:0;">Cancel</button>
-    </div>
     <div id="routeEditBanner" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:1000; background:var(--panel); border:1px solid var(--row-accent); border-radius:8px; padding:10px 16px; font-size:12.5px; box-shadow:0 4px 16px rgba(0,0,0,.4); align-items:center; gap:12px;">
       <span id="routeEditText">Editing route — click the map to add a bend point, drag a point to move it, click a point to remove it.</span>
       <button class="btn" id="routeEditUndoBtn" style="flex-shrink:0;">Undo</button>
@@ -275,32 +271,11 @@
       </div>
       <div class="field"><label>Notes</label><textarea id="elNotes" placeholder="e.g. Primary path, OSP aerial"></textarea></div>
       <button class="btn" type="button" id="elEditRouteBtn" style="align-self:flex-start;">✏️ Edit Route (bend around obstacles)</button>
-      <button class="btn" type="button" id="elInsertNodeBtn" style="align-self:flex-start;">🔌 Insert Node Here</button>
     </div>
     <div class="mfoot">
       <button class="btn danger" id="elDeleteBtn" style="margin-right:auto;">Delete Link</button>
       <button class="btn" onclick="closeEditLinkModal()">Cancel</button>
       <button class="btn primary" id="elSaveBtn">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Insert Node Modal (appears after clicking the map point to insert at) -->
-<div class="modalOverlay" id="insertNodeModal">
-  <div class="modal" style="width:420px;">
-    <div class="mhead"><h3>Insert Node</h3><button class="closeBtn" onclick="closeInsertNodeModal()">✕</button></div>
-    <div class="mbody">
-      <div class="howHtml"><p id="insertNodeIntro"></p></div>
-      <div class="field"><label>Label / Site Name</label><input id="inLabel" placeholder="e.g. SPLICE-2201"/></div>
-      <div class="field"><label>Category</label><select id="inCategory"></select></div>
-      <div class="row2">
-        <div class="field"><label id="inDistALabel">Distance (A side)</label><input id="inDistA" placeholder="e.g. 8.2 km"/></div>
-        <div class="field"><label id="inDistBLabel">Distance (B side)</label><input id="inDistB" placeholder="e.g. 10.2 km"/></div>
-      </div>
-    </div>
-    <div class="mfoot">
-      <button class="btn" onclick="closeInsertNodeModal()">Cancel</button>
-      <button class="btn primary" id="inSaveBtn">Insert Node</button>
     </div>
   </div>
 </div>
@@ -885,7 +860,6 @@ document.addEventListener('keydown', (e)=>{
     clearLinkPending();
     if(document.getElementById('imageLightbox').style.display === 'flex') closeImageLightbox();
     if(routeEditContext) finishRouteEdit(false);
-    if(insertNodePendingLinkId && !insertNodeClickedPoint) cancelInsertNode();
   }
   if(routeEditContext && (e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)){
     e.preventDefault();
@@ -1503,107 +1477,6 @@ document.getElementById('routeEditDoneBtn').onclick = ()=>finishRouteEdit(true);
 document.getElementById('routeEditCancelBtn').onclick = ()=>finishRouteEdit(false);
 document.getElementById('routeEditUndoBtn').onclick = undoRouteEdit;
 
-/* ---------- INSERT NODE (split a line into two, joined by a new site) ---------- */
-let insertNodePendingLinkId = null;
-let insertNodeClickedPoint = null;
-
-function distToSegment(p, v, w){
-  const l2 = (w[0]-v[0])**2 + (w[1]-v[1])**2;
-  if(l2 === 0) return Math.hypot(p.lat-v[0], p.lng-v[1]);
-  let t = ((p.lat-v[0])*(w[0]-v[0]) + (p.lng-v[1])*(w[1]-v[1])) / l2;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(p.lat-(v[0]+t*(w[0]-v[0])), p.lng-(v[1]+t*(w[1]-v[1])));
-}
-function splitSegmentIndex(fullPath, clickPoint){
-  let bestIdx = 0, bestDist = Infinity;
-  for(let i=0;i<fullPath.length-1;i++){
-    const d = distToSegment(clickPoint, fullPath[i], fullPath[i+1]);
-    if(d < bestDist){ bestDist = d; bestIdx = i; }
-  }
-  return bestIdx;
-}
-function startInsertNode(){
-  const linkId = activeEditLinkId;
-  if(!linkId) return;
-  closeEditLinkModal();
-  insertNodePendingLinkId = linkId;
-  document.getElementById('insertNodeBanner').style.display = 'flex';
-  map.on('click', insertNodeMapClickHandler);
-}
-function insertNodeMapClickHandler(e){
-  insertNodeClickedPoint = e.latlng;
-  map.off('click', insertNodeMapClickHandler);
-  document.getElementById('insertNodeBanner').style.display = 'none';
-  openInsertNodeModal();
-}
-function cancelInsertNode(){
-  map.off('click', insertNodeMapClickHandler);
-  document.getElementById('insertNodeBanner').style.display = 'none';
-  insertNodePendingLinkId = null;
-  insertNodeClickedPoint = null;
-}
-function openInsertNodeModal(){
-  const link = links.find(x=>x.id===insertNodePendingLinkId);
-  document.getElementById('inCategory').innerHTML = categories.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
-  if(categories.some(c=>c.key==='row')) document.getElementById('inCategory').value = 'row';
-  document.getElementById('inLabel').value = '';
-  document.getElementById('inDistA').value = '';
-  document.getElementById('inDistB').value = '';
-  document.getElementById('insertNodeIntro').textContent = link
-    ? `Splitting the link between "${link.siteA}" and "${link.siteB}" — enter the new node's name and category. Distances are optional; fill them in if you know the real cable length on each side.`
-    : '';
-  document.getElementById('insertNodeModal').classList.add('open');
-}
-function closeInsertNodeModal(){
-  document.getElementById('insertNodeModal').classList.remove('open');
-  insertNodePendingLinkId = null;
-  insertNodeClickedPoint = null;
-}
-document.getElementById('elInsertNodeBtn').onclick = startInsertNode;
-document.getElementById('insertNodeCancelBtn').onclick = cancelInsertNode;
-document.getElementById('inSaveBtn').onclick = async ()=>{
-  const label = document.getElementById('inLabel').value.trim();
-  if(!label){ alert('Enter a name for the new node.'); return; }
-  if(findSiteByLabel(label)){ alert(`A site named "${label}" already exists — pick a different name.`); return; }
-  const catKey = document.getElementById('inCategory').value;
-  const distA = document.getElementById('inDistA').value;
-  const distB = document.getElementById('inDistB').value;
-  const link = links.find(x=>x.id===insertNodePendingLinkId);
-  const clickPoint = insertNodeClickedPoint;
-  if(!link || !clickPoint){ closeInsertNodeModal(); return; }
-  const aRec = findSiteByLabel(link.siteA), bRec = findSiteByLabel(link.siteB);
-  if(!aRec || !bRec){ alert('Could not find both sites for this link.'); closeInsertNodeModal(); return; }
-  const aPt = getPointCoords(aRec, link.pointA), bPt = getPointCoords(bRec, link.pointB);
-  const existingWaypoints = link.waypoints || [];
-  const fullPath = [[aPt.lat,aPt.lng], ...existingWaypoints, [bPt.lat,bPt.lng]];
-  const splitIdx = splitSegmentIndex(fullPath, clickPoint);
-  const wpBefore = existingWaypoints.slice(0, splitIdx);
-  const wpAfter = existingWaypoints.slice(splitIdx);
-
-  const newRec = {
-    id:'loc'+Date.now(), type: catKey, label,
-    aLocation: label, aLocationLat: String(clickPoint.lat), aLocationLng: String(clickPoint.lng),
-    city:'', carrier:'', dataCenter:'', dataCenterLat:'', dataCenterLng:'',
-    pm:'', fiberCount:24, ports:Array.from({length:24},()=>({on:false,conn:'',dist:'',live:false})),
-    notes:'', serviceType:'', circuitId:'', images:[], custom:{}, updatedAt:Date.now()
-  };
-  records.push(newRec);
-
-  links = links.filter(x=>x.id!==link.id);
-  const linkA = {id:'link'+Date.now()+'a', siteA:link.siteA, siteB:label, pointA:link.pointA, pointB:'main', type:link.type, length:distA, notes:'', waypoints: wpBefore.length?wpBefore:undefined};
-  const linkB = {id:'link'+Date.now()+'b', siteA:label, siteB:link.siteB, pointA:'main', pointB:link.pointB, type:link.type, length:distB, notes:'', waypoints: wpAfter.length?wpAfter:undefined};
-  links.push(linkA, linkB);
-
-  logEvent('add', label, `${catByKey(catKey).label} · inserted as a node splitting ${link.siteA} ↔ ${link.siteB}`);
-  logEvent('link', `${linkA.siteA} ↔ ${linkA.siteB}`, 'Created by node insertion');
-  logEvent('link', `${linkB.siteA} ↔ ${linkB.siteB}`, 'Created by node insertion');
-
-  await saveRecords();
-  await saveLinks();
-  closeInsertNodeModal();
-  renderList();
-};
-
 document.getElementById('elSaveBtn').onclick = async ()=>{
   const l = links.find(x=>x.id===activeEditLinkId);
   if(!l) return;
@@ -2004,7 +1877,6 @@ function renderSettingsBody(){
       <h5>Linking sites on the map</h5>
       <p>Two ways to link. <b>Open any site and click "+ Link to Another Site"</b> for full control — pick a fiber length, a type (Backbone, Metro, Lateral, or Point to Point), notes, and exactly which point on each side (A Location or Z Location / Data Center) to connect. Or, for a faster path: <b>hold Shift and click one site, then Shift+click a second site</b> — a Backbone link between their A Locations saves instantly, no form. Click the same site again, press Escape, or click empty map space to cancel a pending Shift+Click before finishing it. Either way, <b>clicking an existing line on the map</b> opens a small editor to change its length, type, or notes, or delete it in one click — no confirmation step, so a click on Delete there is final. A link only draws once both chosen points have real GPS; until then it still shows in the Map Links list with a note that it's waiting on GPS. Renaming a site automatically updates any links pointing to it.</p>
       <p><b>Bending a line around something (water, a building, whatever's in the way):</b> click the line, then click "✏️ Edit Route." Click anywhere on the map to drop a bend point — the line follows it — and keep clicking to add as many as you need. Drag a point afterward to nudge it, or click a point to remove it. Hit "Done" to save the shape permanently, or "Cancel" (or Escape) to discard changes and leave the line as it was.</p>
-      <p><b>Inserting a node mid-span (a splice enclosure or cabinet sitting partway along an existing run):</b> click the line, then click "🔌 Insert Node Here." Click the map at the actual spot the enclosure sits — doesn't need to be the exact middle. Give it a name and pick its category (Splice Closure, Cabinet, MDF Room, whatever fits), and optionally the distance on each side if you know it. The original line splits into two — Site A → New Node, and New Node → Site B — and the new node is a full, real site from then on, so you can link anything else to it exactly like any other site (Shift+Click or "+ Link to Another Site").</p>
       <h5>Searching for a few sites at once</h5>
       <p>Separate multiple search terms with a comma (,), semicolon (;), or asterisk (*) — for example: <b>SPLICE-168080, ROW CAB 7, TPA Ring1 Seg1 Cab1</b>. The list and map will narrow down to only the sites matching any one of those terms, so you can pull up a handful of specific locations side by side instead of hunting through everything. This works with names, GPS, carriers, ports — anything the regular search already matches.</p>
       <h5>About the export password</h5>
