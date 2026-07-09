@@ -820,6 +820,10 @@ function linkTypeInfo(t){ return LINK_TYPES[t] || LINK_TYPES.other; }
 function renderMarkers(list){
   Object.values(markers).forEach(m=>map.removeLayer(m));
   markers = {};
+  // Lines first, markers last — markers must render on top so a click at a site's
+  // exact position always hits the marker, never the invisible wide line underneath it.
+  renderLinkLines(list);
+  renderDataCenterConnectorLines(list);
   // A Location is the site's position now — it gets its own dot on the map
   // whether or not this site has a Z Location/Data Center at all.
   list.filter(rec=> !(rec.aLocationLat===0 && rec.aLocationLng===0) && rec.aLocationLat && rec.aLocationLng).forEach(rec=>{
@@ -838,9 +842,8 @@ function renderMarkers(list){
     });
     markers[rec.id] = marker;
   });
-  renderDataCenterMarkers(list);
+  renderDataCenterMarkerDots(list);
   updateLabelVisibility();
-  renderLinkLines(list);
 }
 
 /* Shift+Click two points in a row to instantly link them — either point can be
@@ -907,11 +910,27 @@ async function handleShiftClickLink(id, pointKey){
    coordinates — no separate "link" step needed for this automatic connection. */
 let hierarchyMarkers = [];
 let hierarchyLines = [];
-function renderDataCenterMarkers(list){
-  hierarchyMarkers.forEach(m=>map.removeLayer(m));
-  hierarchyMarkers = [];
+function renderDataCenterConnectorLines(list){
   hierarchyLines.forEach(l=>map.removeLayer(l));
   hierarchyLines = [];
+  list.forEach(rec=>{
+    const zLat = parseFloat(rec.dataCenterLat), zLng = parseFloat(rec.dataCenterLng);
+    if(isNaN(zLat) || isNaN(zLng) || (zLat===0 && zLng===0)) return;
+    const color = '#2ec4c0';
+    const aLat = parseFloat(rec.aLocationLat), aLng = parseFloat(rec.aLocationLng);
+    if(!isNaN(aLat) && !isNaN(aLng) && !(aLat===0 && aLng===0)){
+      const coords = [[aLat,aLng], ...(rec.aToZWaypoints||[]), [zLat,zLng]];
+      const line = L.polyline(coords, {color, weight:1.5, opacity:.6, interactive:false}).addTo(map);
+      const hitLine = L.polyline(coords, {color:'#000', weight:12, opacity:0}).addTo(map);
+      hitLine.bindTooltip(`${rec.label}: ${fieldLabels.aLocation} → ${fieldLabels.dataCenter}`, {sticky:true});
+      hitLine.on('click', (e)=>{ L.DomEvent.stopPropagation(e); startRouteEditSiteAZ(rec.id); });
+      hierarchyLines.push(line, hitLine);
+    }
+  });
+}
+function renderDataCenterMarkerDots(list){
+  hierarchyMarkers.forEach(m=>map.removeLayer(m));
+  hierarchyMarkers = [];
   list.forEach(rec=>{
     const zLat = parseFloat(rec.dataCenterLat), zLng = parseFloat(rec.dataCenterLng);
     if(isNaN(zLat) || isNaN(zLng) || (zLat===0 && zLng===0)) return;
@@ -927,15 +946,6 @@ function renderDataCenterMarkers(list){
       }
     });
     hierarchyMarkers.push(m);
-    const aLat = parseFloat(rec.aLocationLat), aLng = parseFloat(rec.aLocationLng);
-    if(!isNaN(aLat) && !isNaN(aLng) && !(aLat===0 && aLng===0)){
-      const coords = [[aLat,aLng], ...(rec.aToZWaypoints||[]), [zLat,zLng]];
-      const line = L.polyline(coords, {color, weight:1.5, opacity:.6, interactive:false}).addTo(map);
-      const hitLine = L.polyline(coords, {color:'#000', weight:16, opacity:0}).addTo(map);
-      hitLine.bindTooltip(`${rec.label}: ${fieldLabels.aLocation} → ${fieldLabels.dataCenter}`, {sticky:true});
-      hitLine.on('click', (e)=>{ L.DomEvent.stopPropagation(e); startRouteEditSiteAZ(rec.id); });
-      hierarchyLines.push(line, hitLine);
-    }
   });
 }
 
@@ -982,7 +992,7 @@ function renderLinkLines(list){
     const line = L.polyline(coords, {color:info.color, weight:2.5, opacity:.8, interactive:false}).addTo(map);
     // Invisible, much wider line layered on top — this is what you actually click/hover;
     // the thin colored line underneath stays purely visual so the map doesn't look thicker.
-    const hitLine = L.polyline(coords, {color:'#000', weight:18, opacity:0}).addTo(map);
+    const hitLine = L.polyline(coords, {color:'#000', weight:12, opacity:0}).addTo(map);
     hitLine.bindTooltip(`${a.label} ↔ ${b.label}${link.length ? ' · '+link.length : ''} (${info.label})`, {sticky:true});
     hitLine.on('click', (e)=>{ L.DomEvent.stopPropagation(e); openEditLinkModal(link.id); });
     linkLines.push(line, hitLine);
